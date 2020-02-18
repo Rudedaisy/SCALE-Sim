@@ -8,13 +8,14 @@ from absl import app
 FLAGS = flags.FLAGS
 #name of flag | default | explanation
 flags.DEFINE_string("arch_config","./configs/scale.cfg","file where we are getting our architechture from")
-flags.DEFINE_string("network","./topologies/conv_nets/alexnet.csv","topology that we are reading")
+flags.DEFINE_string("network","./topologies/conv_nets/VGG16_PENNIv2.csv","topology that we are reading")
 
 
 class scale:
-    def __init__(self, sweep = False, save = False):
+    def __init__(self, sweep = False, save = False, PENNI = False):
         self.sweep = sweep
         self.save_space = save
+        self.PENNI = PENNI
 
     def parse_config(self):
         general = 'general'
@@ -46,6 +47,10 @@ class scale:
         if len(ar_w) > 1:
             self.ar_w_max = ar_w[1].strip()
 
+        ## Adder tree number of leaf nodes; total number of nodes is 2N-1
+        add_tree_leaves = config.get(arch_sec, 'AddTreeLeaves')
+        self.add_tree_leaves = int(add_tree_leaves.strip())
+
         ## IFMAP SRAM buffer min, max
         ifmap_sram = config.get(arch_sec, 'IfmapSramSz').split(',')
         self.isram_min = ifmap_sram[0].strip()
@@ -66,6 +71,10 @@ class scale:
         ofmap_sram = config.get(arch_sec, 'OfmapSramSz').split(',')
         self.osram_min = ofmap_sram[0].strip()
 
+        ## Coeff Ptrs SRAM buffer min, max
+        coeff_ptr_sram = config.get(arch_sec, 'CoeffPtrSramSz').split(',')
+        self.coeff_ptr_sram = coeff_ptr_sram[0].strip()
+
         if len(ofmap_sram) > 1:
             self.osram_max = ofmap_sram[1].strip()
 
@@ -79,6 +88,9 @@ class scale:
 
         ofmap_offset = config.get(arch_sec, 'OfmapOffset')
         self.ofmap_offset = int(ofmap_offset.strip())
+
+        coeff_ptrs_offset = config.get(arch_sec, 'CoeffPtrOffset')
+        self.coeff_ptrs.offset = int(coeff_ptrs_offset.strip())
 
         ## Read network_presets
         ## For now that is just the topology csv filename
@@ -116,17 +128,20 @@ class scale:
 
         net_name = self.topology_file.split('/')[-1].split('.')[0]
         #print("Net name = " + net_name)
-        offset_list = [self.ifmap_offset, self.filter_offset, self.ofmap_offset]
+        offset_list = [self.ifmap_offset, self.filter_offset, self.ofmap_offset, self.coeff_ptrs_offset]
 
         r.run_net(  ifmap_sram_size  = int(self.isram_min),
                     filter_sram_size = int(self.fsram_min),
                     ofmap_sram_size  = int(self.osram_min),
+                    coeff_ptr_sram_size = int(self.coeff_ptr_sram)
                     array_h = int(self.ar_h_min),
                     array_w = int(self.ar_w_min),
+                    add_tree_leaves = int(self.add_tree_leaves),
                     net_name = net_name,
                     data_flow = self.dataflow,
                     topology_file = self.topology_file,
-                    offset_list = offset_list
+                    offset_list = offset_list,
+                    PENNI = self.PENNI
                 )
         self.cleanup()
         print("************ SCALE SIM Run Complete ****************")
@@ -194,7 +209,7 @@ class scale:
                 self.run_once()
 
 def main(argv):
-    s = scale(save = False, sweep = False)
+    s = scale(save = False, sweep = False, PENNI = True)
     s.run_scale()
 
 if __name__ == '__main__':

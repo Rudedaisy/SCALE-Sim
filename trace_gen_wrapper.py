@@ -4,12 +4,32 @@ import sram_traffic_os as sram
 import sram_traffic_ws as sram_ws
 import sram_traffic_is as sram_is
 
+def gen_adder_tree_traces(
+        add_tree_leaves = 512,
+        ifmap_h = 7, ifmap_w = 7,
+        num_filt = 8,
+        coeffs = [],
+        
+        word_size_bytes = 1,
+        filt_base = 1000000, ifmap_base=0, ofmap_base = 2000000, coeff_ptr_base = 3000000,
+
+        sram_read_trace_file = "sram_read.csv",
+        sram_write_trace_file = "sram_write.csv",
+
+        dram_filter_trace_file = "dram_filter_read.csv",
+        dram_ifmap_trace_file = "dram_ifmap_read.csv",
+        dram_ofmap_trace_file = "dram_ofmap_write.csv"
+    ):
+    
+    # INSERT ADDER TREE TRACE CODE HERE
+
 def gen_all_traces(
         array_h = 4,
         array_w = 4,
         ifmap_h = 7, ifmap_w = 7,
         filt_h  = 3, filt_w = 3,
         num_channels = 3,
+        num_groups = 1,
         strides = 1, num_filt = 8,
 
         data_flow = 'os',
@@ -38,6 +58,7 @@ def gen_all_traces(
                 ifmap_h=ifmap_h, ifmap_w=ifmap_w,
                 filt_h=filt_h, filt_w=filt_w,
                 num_channels=num_channels,
+                num_groups=num_groups,
                 strides=strides, num_filt=num_filt,
                 filt_base=filt_base, ifmap_base=ifmap_base,
                 ofmap_base = ofmap_base,
@@ -52,6 +73,7 @@ def gen_all_traces(
                 ifmap_h = ifmap_h, ifmap_w = ifmap_w,
                 filt_h = filt_h, filt_w = filt_w,
                 num_channels = num_channels,
+                num_groups = num_groups,
                 strides = strides, num_filt = num_filt,
                 ofmap_base = ofmap_base, filt_base = filt_base, ifmap_base = ifmap_base,
                 sram_read_trace_file = sram_read_trace_file,

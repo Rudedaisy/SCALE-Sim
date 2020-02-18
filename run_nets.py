@@ -6,12 +6,15 @@ import subprocess
 def run_net( ifmap_sram_size=1,
              filter_sram_size=1,
              ofmap_sram_size=1,
+             coeff_ptr_sram_size=1,
              array_h=32,
              array_w=32,
+             add_tree_leaves = 512,
              data_flow = 'os',
              topology_file = './topologies/yolo_v2.csv',
              net_name='yolo_v2',
-             offset_list = [0, 10000000, 20000000]
+             offset_list = [0, 10000000, 20000000, 30000000],
+             PENNI=False
             ):
 
     ifmap_sram_size *= 1024
@@ -74,10 +77,28 @@ def run_net( ifmap_sram_size=1,
         num_filters = int(elems[6])
 
         strides = int(elems[7])
-        
+
         ifmap_base  = offset_list[0]
         filter_base = offset_list[1]
         ofmap_base  = offset_list[2]
+        coeff_ptr_base = offset_list[3]
+
+        # Added by Ed: in PENNI mode, set num_groups = num_channels if it's marked as Depthwise Seperable Conv (DSC)
+        # if marked as Weighted Accumulate (WA), collect traces for the adder tree instead
+        num_groups = 1
+        if PENNI and ("DSC" in name):
+            num_groups = num_channels
+        elif PENNI and ("WA" in name):
+            coeffs = [] ###### IMPORT COEFFS HERE
+            coeff_ptrs = [] ###
+            OFM_ptrs = [] #####
+            bw_str, detailed_str, util, clk = \
+                tg.gen_adder_tree_traces()
+            
+            util_str = str(util)
+            line = name + ",\t" + clk +",\t" + util_str +",\n"
+            cycl.write(line)
+            continue
 
         bw_log = str(ifmap_sram_size) +",\t" + str(filter_sram_size) + ",\t" + str(ofmap_sram_size) + ",\t" + name + ",\t"
         max_bw_log = bw_log
@@ -91,6 +112,7 @@ def run_net( ifmap_sram_size=1,
                                 filt_h = filt_h,
                                 filt_w = filt_w,
                                 num_channels = num_channels,
+                                num_groups = num_groups,
                                 num_filt = num_filters,
                                 strides = strides,
                                 data_flow = data_flow,

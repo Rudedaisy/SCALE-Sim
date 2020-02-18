@@ -8,18 +8,24 @@ def sram_traffic(
         ifmap_h=7, ifmap_w=7,
         filt_h=3, filt_w=3,
         num_channels=3,
+        num_groups=1,
         strides=1, num_filt=8,
         ofmap_base=2000000, filt_base=1000000, ifmap_base=0,
         sram_read_trace_file="sram_read.csv",
         sram_write_trace_file="sram_write.csv"
     ):
 
+    # Added by ed: Number of groups impacts the filter size
+    assert num_channels % num_groups == 0, "Number of groups ({}) does not partition number of channels ({}) cleanly".format(num_groups, num_channels)
+    filt_chan = num_channels // num_groups
+    num_filt *= num_groups # -------- CHECK FOR CORRECTNESS
+
     # Dimensions of output feature map channel
     E_h = math.floor((ifmap_h - filt_h + strides) / strides)
     E_w = math.floor((ifmap_w - filt_w + strides) / strides)
     
     # Number of pixels in one convolution window
-    px_per_conv_window = filt_h * filt_w * num_channels
+    px_per_conv_window = filt_h * filt_w * filt_chan # orig: num_channels
     r2c = px_per_conv_window
 
     # Total number of ofmap px across all channels
