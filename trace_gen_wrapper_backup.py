@@ -124,10 +124,7 @@ def gen_all_traces(
     util        = 0
 
     print("Generating traces and bw numbers")
-    if PENNI:
-        sram_cycles, util = \
-            sram.sram_traffic
-    elif data_flow == 'os':
+    if data_flow == 'os':
         sram_cycles, util = \
             sram.sram_traffic(
                 dimension_rows= array_h,

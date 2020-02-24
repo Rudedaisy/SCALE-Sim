@@ -97,35 +97,61 @@ def run_net( ifmap_sram_size=1,
         num_groups = 1
         if PENNI and ("DSC" in name):
             num_groups = num_channels
-        elif PENNI and ("WA" in name):
-            continue
+        if PENNI and ("WA" in name):
+            num_channels /= num_bases
+            # Assuming every DSConv is followed by a WA and only both types of layers exist at the beginning
+            # coeff_ptrs_layer format: [output_channel] = [basis*num_input_channels + input_channel]
+            coeff_ptrs_layer = coeff_ptrs[row_idx // 2]
+            bw_str, detailed_str, util, clk = \
+                tg.gen_adder_tree_traces(
+                                ifmap_h = ifmap_h,
+                                ifmap_w = ifmap_w,
+                                add_tree_leaves = add_tree_leaves,
+                                num_channels = num_channels,
+                                num_bases = num_bases,
+                                num_filt = num_filters,
+                                coeff_ptrs = coeff_ptrs_layer,
+                                word_size_bytes = 1,
+                                filter_sram_size = filter_sram_size,
+                                ifmap_sram_size = ifmap_sram_size,
+                                ofmap_sram_size = ofmap_sram_size,
+                                filt_base = filter_base,
+                                ifmap_base = ifmap_base,
+                                ofmap_base = ofmap_base,
+                                coeff_ptr_base = coeff_ptr_base,
+                                sram_read_trace_file= net_name + "_" + name + "_sram_read.csv",
+                                sram_write_trace_file= net_name + "_" + name + "_sram_write.csv",
+                                dram_filter_trace_file=net_name + "_" + name + "_dram_filter_read.csv",
+                                dram_ifmap_trace_file= net_name + "_" + name + "_dram_ifmap_read.csv",
+                                dram_ofmap_trace_file= net_name + "_" + name + "_dram_ofmap_write.csv"
+                                )
             
-        bw_str, detailed_str, util, clk =  \
-        tg.gen_all_traces(  array_h = array_h,
-                            array_w = array_w,
-                            ifmap_h = ifmap_h,
-                            ifmap_w = ifmap_w,
-                            filt_h = filt_h,
-                            filt_w = filt_w,
-                            num_channels = num_channels,
-                            num_groups = num_groups,
-                            num_filt = num_filters,
-                            strides = strides,
-                            data_flow = data_flow,
-                            word_size_bytes = 1,
-                            filter_sram_size = filter_sram_size,
-                            ifmap_sram_size = ifmap_sram_size,
-                            ofmap_sram_size = ofmap_sram_size,
-                            filt_base = filter_base,
-                            ifmap_base = ifmap_base,
-                            ofmap_base = ofmap_base,
-                            sram_read_trace_file= net_name + "_" + name + "_sram_read.csv",
-                            sram_write_trace_file= net_name + "_" + name + "_sram_write.csv",
-                            dram_filter_trace_file=net_name + "_" + name + "_dram_filter_read.csv",
-                            dram_ifmap_trace_file= net_name + "_" + name + "_dram_ifmap_read.csv",
-                            dram_ofmap_trace_file= net_name + "_" + name + "_dram_ofmap_write.csv",
-                            PENNI=PENNI
-                          )
+        else:
+            bw_str, detailed_str, util, clk =  \
+            tg.gen_all_traces(  array_h = array_h,
+                                array_w = array_w,
+                                ifmap_h = ifmap_h,
+                                ifmap_w = ifmap_w,
+                                filt_h = filt_h,
+                                filt_w = filt_w,
+                                num_channels = num_channels,
+                                num_groups = num_groups,
+                                num_filt = num_filters,
+                                strides = strides,
+                                data_flow = data_flow,
+                                word_size_bytes = 1,
+                                filter_sram_size = filter_sram_size,
+                                ifmap_sram_size = ifmap_sram_size,
+                                ofmap_sram_size = ofmap_sram_size,
+                                filt_base = filter_base,
+                                ifmap_base = ifmap_base,
+                                ofmap_base = ofmap_base,
+                                sram_read_trace_file= net_name + "_" + name + "_sram_read.csv",
+                                sram_write_trace_file= net_name + "_" + name + "_sram_write.csv",
+                                dram_filter_trace_file=net_name + "_" + name + "_dram_filter_read.csv",
+                                dram_ifmap_trace_file= net_name + "_" + name + "_dram_ifmap_read.csv",
+                                dram_ofmap_trace_file= net_name + "_" + name + "_dram_ofmap_write.csv"
+                            )
 
         bw_log += bw_str
         bw.write(bw_log + "\n")

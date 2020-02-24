@@ -90,7 +90,7 @@ class scale:
         self.ofmap_offset = int(ofmap_offset.strip())
 
         coeff_ptrs_offset = config.get(arch_sec, 'CoeffPtrOffset')
-        self.coeff_ptrs.offset = int(coeff_ptrs_offset.strip())
+        self.coeff_ptrs_offset = int(coeff_ptrs_offset.strip())
 
         ## Read network_presets
         ## For now that is just the topology csv filename
@@ -133,7 +133,7 @@ class scale:
         r.run_net(  ifmap_sram_size  = int(self.isram_min),
                     filter_sram_size = int(self.fsram_min),
                     ofmap_sram_size  = int(self.osram_min),
-                    coeff_ptr_sram_size = int(self.coeff_ptr_sram)
+                    coeff_ptr_sram_size = int(self.coeff_ptr_sram),
                     array_h = int(self.ar_h_min),
                     array_w = int(self.ar_w_min),
                     add_tree_leaves = int(self.add_tree_leaves),
@@ -141,7 +141,8 @@ class scale:
                     data_flow = self.dataflow,
                     topology_file = self.topology_file,
                     offset_list = offset_list,
-                    PENNI = self.PENNI
+                    PENNI = self.PENNI,
+                    num_bases=5
                 )
         self.cleanup()
         print("************ SCALE SIM Run Complete ****************")
