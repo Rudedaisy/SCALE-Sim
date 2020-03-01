@@ -11,7 +11,7 @@ scaleOut = 32
 CFLAG = 0
 
 # base path | PENNI path
-paths = ["outputs/VGG16_CIFAR10_32x32_os/", "outputs/VGG16_CIFAR10_32x32_os_PENNI/", "outputs/VGG16_CIFAR10_32x32_os_squeeze/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv2/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv3/"]
+paths = ["outputs/VGG16_CIFAR10_32x32_os/", "outputs/VGG16_CIFAR10_32x32_os_PENNI/", "outputs/VGG16_CIFAR10_32x32_os_squeeze/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv2/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv4/"]
 # cycles | avg_bandwidth
 baseFileNames = ["VGG16_cycles.csv", "VGG16_avg_bw.csv"]
 PENNIFileNames = ["VGG16_PENNIv1_cycles.csv", "VGG16_PENNIv1_avg_bw.csv"]

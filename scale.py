@@ -47,9 +47,11 @@ class scale:
         if len(ar_w) > 1:
             self.ar_w_max = ar_w[1].strip()
 
-        ## Adder tree number of leaf nodes; total number of nodes is 2N-1
-        add_tree_leaves = config.get(arch_sec, 'AddTreeLeaves')
-        self.add_tree_leaves = int(add_tree_leaves.strip())
+        ## WA array dimensions
+        wa_ar_h = config.get(arch_sec, 'WAArrayHeight')
+        self.wa_ar_h = wa_ar_h.strip()
+        wa_ar_scaleout = config.get(arch_sec, 'WAArrayScale')
+        self.wa_ar_scaleout = wa_ar_scaleout.strip()
 
         ## IFMAP SRAM buffer min, max
         ifmap_sram = config.get(arch_sec, 'IfmapSramSz').split(',')
@@ -72,8 +74,8 @@ class scale:
         self.osram_min = ofmap_sram[0].strip()
 
         ## Coeff Ptrs SRAM buffer min, max
-        coeff_ptr_sram = config.get(arch_sec, 'CoeffPtrSramSz').split(',')
-        self.coeff_ptr_sram = coeff_ptr_sram[0].strip()
+        wa_sram = config.get(arch_sec, 'WASramSz').split(',')
+        self.wa_sram = wa_sram[0].strip()
 
         if len(ofmap_sram) > 1:
             self.osram_max = ofmap_sram[1].strip()
@@ -89,8 +91,8 @@ class scale:
         ofmap_offset = config.get(arch_sec, 'OfmapOffset')
         self.ofmap_offset = int(ofmap_offset.strip())
 
-        coeff_ptrs_offset = config.get(arch_sec, 'CoeffPtrOffset')
-        self.coeff_ptrs_offset = int(coeff_ptrs_offset.strip())
+        wa_offset = config.get(arch_sec, 'WAOffset')
+        self.wa_offset = int(wa_offset.strip())
 
         ## Read network_presets
         ## For now that is just the topology csv filename
@@ -128,15 +130,16 @@ class scale:
 
         net_name = self.topology_file.split('/')[-1].split('.')[0]
         #print("Net name = " + net_name)
-        offset_list = [self.ifmap_offset, self.filter_offset, self.ofmap_offset, self.coeff_ptrs_offset]
+        offset_list = [self.ifmap_offset, self.filter_offset, self.ofmap_offset, self.wa_offset]
 
         r.run_net(  ifmap_sram_size  = int(self.isram_min),
                     filter_sram_size = int(self.fsram_min),
                     ofmap_sram_size  = int(self.osram_min),
-                    coeff_ptr_sram_size = int(self.coeff_ptr_sram),
+                    wa_sram_size = int(self.wa_sram),
                     array_h = int(self.ar_h_min),
                     array_w = int(self.ar_w_min),
-                    add_tree_leaves = int(self.add_tree_leaves),
+                    wa_array_h = int(self.wa_ar_h),
+                    wa_array_scaleout = int(self.wa_ar_scaleout),
                     net_name = net_name,
                     data_flow = self.dataflow,
                     topology_file = self.topology_file,

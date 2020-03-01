@@ -4,11 +4,13 @@ import sram_traffic_os as sram
 import sram_traffic_ws as sram_ws
 import sram_traffic_is as sram_is
 import sram_traffic_adder_tree as sram_adder_tree
+import sram_traffic_PENNI as sram_PENNI
 
-def gen_adder_tree_traces(
+def gen_wa_traces(
+        array_h = 7,
+        array_w = 7,
         ifmap_h = 7,
         ifmap_w = 7,
-        add_tree_leaves = 512,
         num_channels = 3,
         num_bases = 5,
         num_filt = 8,
@@ -18,12 +20,13 @@ def gen_adder_tree_traces(
         word_size_bytes = 1,
         filter_sram_size = 64,
         ifmap_sram_size = 64,
+        wa_sram_size = 64,
         ofmap_sram_size = 64,
 
         filt_base = 1000000,
         ifmap_base = 0,
         ofmap_base = 2000000,
-        coeff_ptr_base = 3000000,
+        wa_base = 3000000,
 
         sram_read_trace_file= "sram_read.csv",
         sram_write_trace_file= "sram_write.csv",
@@ -38,10 +41,11 @@ def gen_adder_tree_traces(
 
     print("Generating traces and bw numbers")
     sram_cycles, util = \
-        sram_adder_tree.sram_traffic(
+        sram_PENNI.sram_traffic(
+            array_h = array_h,
+            array_w = array_w,
             ifmap_h = ifmap_h,
             ifmap_w = ifmap_w,
-            add_tree_leaves = add_tree_leaves,
             num_channels = num_channels,
             num_bases = num_bases,
             num_filt = num_filt,
@@ -49,16 +53,16 @@ def gen_adder_tree_traces(
             filt_base = filt_base,
             ifmap_base = ifmap_base,
             ofmap_base = ofmap_base,
-            coeff_ptr_base = coeff_ptr_base,
+            wa_base = wa_base,
             sram_read_trace_file=sram_read_trace_file,
             sram_write_trace_file=sram_write_trace_file
         )
 
     # DRAM traces
     dram.dram_trace_read_v2(
-        sram_sz=ifmap_sram_size,
+        sram_sz=wa_sram_size,
         word_sz_bytes=word_size_bytes,
-        min_addr=ifmap_base, max_addr=filt_base,
+        min_addr=wa_base, max_addr=ofmap_base,
         sram_trace_file=sram_read_trace_file,
         dram_trace_file=dram_ifmap_trace_file,
     )
@@ -66,18 +70,10 @@ def gen_adder_tree_traces(
     dram.dram_trace_read_v2(
         sram_sz= filter_sram_size,
         word_sz_bytes= word_size_bytes,
-        min_addr=filt_base, max_addr=ofmap_base,
+        min_addr=filt_base, max_addr=wa_base,
         sram_trace_file= sram_read_trace_file,
         dram_trace_file= dram_filter_trace_file,
     )
-
-    """dram.dram_trace_read_v2(
-        sram_sz= filter_sram_size,
-        word_sz_bytes= word_size_bytes,
-        min_addr=filt_base, max_addr=ofmap_base,
-        sram_trace_file= sram_read_trace_file,
-        dram_trace_file= dram_filter_trace_file,
-    )"""
 
     dram.dram_trace_write(
         ofmap_sram_size= ofmap_sram_size,
