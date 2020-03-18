@@ -11,7 +11,7 @@ scaleOut = 32
 CFLAG = 0
 
 # base path | PENNI path
-paths = ["outputs/VGG16_CIFAR10_32x32_os/", "outputs/VGG16_CIFAR10_32x32_os_PENNI/", "outputs/VGG16_CIFAR10_32x32_os_squeeze/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv2/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv4/"]
+paths = ["outputs/VGG16_CIFAR10_32x32_os/", "outputs/VGG16_CIFAR10_32x32_os_PENNI/", "outputs/VGG16_CIFAR10_32x32_os_squeeze/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv2/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv5/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv6/"]
 # cycles | avg_bandwidth
 baseFileNames = ["VGG16_cycles.csv", "VGG16_avg_bw.csv"]
 PENNIFileNames = ["VGG16_PENNIv1_cycles.csv", "VGG16_PENNIv1_avg_bw.csv"]
@@ -28,6 +28,8 @@ for i in range(len(PENNI2FileNames)):
     files.append(paths[3] + PENNI2FileNames[i])
 for i in range(len(PENNI2FileNames)):
     files.append(paths[4] + PENNI2FileNames[i])
+for i in range(len(PENNI2FileNames)):
+    files.append(paths[5] + PENNI2FileNames[i])
 
 # base dram and sram bandwidths
 baseDRAMRead = []
@@ -108,6 +110,22 @@ for idx, layer in enumerate(f):
     P3SRAMRead.append(float(elems[7]))
     P3SRAMWrite.append(float(elems[8]))
 f.close()
+
+# PENNIv3 dram and sram bandwidths
+P6DRAMRead = []
+P6DRAMWrite = []
+P6SRAMRead = []
+P6SRAMWrite = []
+f = open(files[11],'r')
+for idx, layer in enumerate(f):
+    if idx == 0:
+        continue
+    elems = layer.strip().split(',')
+    P6DRAMRead.append(float(elems[4])+float(elems[5]))
+    P6DRAMWrite.append(float(elems[6]))
+    P6SRAMRead.append(float(elems[7]))
+    P6SRAMWrite.append(float(elems[8]))
+f.close()
     
 # base cycles and utilization
 layerNames = []
@@ -171,7 +189,7 @@ for idx, layer in enumerate(f):
     PENNI2Utilization.append(float(elems[2]))
 f.close()
 
-# squeeze + decouple + adder tree cycles and utilization
+# squeeze + decouple + aacoeffcompr cycles and utilization
 PENNI3Cyles = []
 PENNI3CombCyles = []
 PENNI3Utilization = []
@@ -187,6 +205,24 @@ for idx, layer in enumerate(f):
         PENNI3CombCyles.append(float(elems[1]))
 
     PENNI3Utilization.append(float(elems[2]))
+f.close()
+
+# squeeze + decouple + aacoeffcompr cycles and utilization
+PENNI6Cyles = []
+PENNI6CombCyles = []
+PENNI6Utilization = []
+f = open(files[10],'r')
+for idx, layer in enumerate(f):
+    if idx == 0:
+        continue
+    elems = layer.strip().split(',')
+    PENNI6Cyles.append(float(elems[1]))
+    if "WA" in elems[0]:
+        PENNI6CombCyles[len(PENNI6CombCyles) - 1] += float(elems[1])
+    else:
+        PENNI6CombCyles.append(float(elems[1]))
+
+    PENNI6Utilization.append(float(elems[2]))
 f.close()
 
 # squeeze + decouple + smart acc cycles and utilization
@@ -225,12 +261,14 @@ print("PENNIv1: {}".format(np.sum(baseCyles) / np.sum(PENNICombCyles)))
 print("Squeeze: {}".format(np.sum(baseCyles) / np.sum(squeezeCyles)))
 print("PENNIv2: {}".format(np.sum(baseCyles) / np.sum(PENNI2CombCyles)))
 print("PENNIv3: {}".format(np.sum(baseCyles) / np.sum(PENNI3CombCyles)))
+print("PENNIv6: {}".format(np.sum(baseCyles) / np.sum(PENNI6CombCyles)))
 print("PENNIv4: {}".format(np.sum(baseCyles) / np.sum(PENNI4CombCyles)))
 print("Throughput speedup")
 print("PENNIv1: {}".format(max(baseCyles) / max(PENNICombCyles)))
 print("Squeeze: {}".format(max(baseCyles) / max(squeezeCyles)))
 print("PENNIv2: {}".format(max(baseCyles) / max(PENNI2CombCyles)))
 print("PENNIv3: {}".format(max(baseCyles) / max(PENNI3CombCyles)))
+print("PENNIv6: {}".format(max(baseCyles) / max(PENNI6CombCyles)))
 print("PENNIv4: {}".format(max(baseCyles) / max(PENNI4CombCyles)))
 print("Peak DRAM Read BW")
 print("Baseline: {}".format(max(baseDRAMRead)))
@@ -238,24 +276,28 @@ print("PENNIv1: {}".format(max(PDRAMRead)))
 print("Squeeze: {}".format(max(sDRAMRead)))
 print("PENNIv2: {}".format(max(P2DRAMRead)))
 print("PENNIv3: {}".format(max(P3DRAMRead)))
+print("PENNIv6: {}".format(max(P6DRAMRead)))
 print("Peak DRAM Write BW")
 print("Baseline: {}".format(max(baseDRAMWrite)))
 print("PENNIv1: {}".format(max(PDRAMWrite)))
 print("Squeeze: {}".format(max(sDRAMWrite)))
 print("PENNIv2: {}".format(max(P2DRAMWrite)))
 print("PENNIv3: {}".format(max(P3DRAMWrite)))
+print("PENNIv6: {}".format(max(P6DRAMWrite)))
 print("Peak SRAM Read BW")
 print("Baseline: {}".format(max(baseSRAMRead)))
 print("PENNIv1: {}".format(max(PSRAMRead)))
 print("Squeeze: {}".format(max(sSRAMRead)))
 print("PENNIv2: {}".format(max(P2SRAMRead)))
 print("PENNIv3: {}".format(max(P3SRAMRead)))
+print("PENNIv6: {}".format(max(P6SRAMRead)))
 print("Peak SRAM Write BW")
 print("Baseline: {}".format(max(baseSRAMWrite)))
 print("PENNIv1: {}".format(max(PSRAMWrite)))
 print("Squeeze: {}".format(max(sSRAMWrite)))
 print("PENNIv2: {}".format(max(P2SRAMWrite)))
 print("PENNIv3: {}".format(max(P3SRAMWrite)))
+print("PENNIv6: {}".format(max(P6SRAMWrite)))
 
 # utility function to align PENNI and baseline data
 def align(data):
@@ -270,6 +312,8 @@ def align(data):
 # --- Plot Results ---
 # --------------------
 
+stdPlotLegend = ['Baseline','2Stage','PENNI','PENNI+2Stage','PENNI+2Stage+ZeroSkip'] #, '+dynamic_bounds']
+
 def plotBW():
     # DRAM Read BW
     fig, ax = plt.subplots()
@@ -277,11 +321,12 @@ def plotBW():
     ax.plot(range(len(PDRAMRead)), PDRAMRead)
     ax.plot(range(len(PDRAMRead)), align(sDRAMRead))
     ax.plot(range(len(PDRAMRead)), P2DRAMRead)
-    ax.plot(range(len(PDRAMRead)), P3DRAMRead)
+    ax.plot(range(len(P3DRAMRead)), P3DRAMRead)
+    #ax.plot(range(len(P6DRAMRead)), P6DRAMRead)
     ax.set_xlabel('Layer', fontsize = 'large')
     ax.set_ylabel('Bandwidth (B/clk)', fontsize = 'large')
     ax.set_title('VGG16 DRAM Read Bandwidths')
-    ax.legend(['Baseline','Decouple','Squeeze','Sq+Dc','Sq+Dc+Tree'], loc=2)
+    ax.legend(stdPlotLegend, loc=1)
     ax.grid(True)
     plt.show()
     
@@ -291,11 +336,12 @@ def plotBW():
     ax.plot(range(len(PDRAMRead)), PDRAMWrite)
     ax.plot(range(len(PDRAMRead)), align(sDRAMWrite))
     ax.plot(range(len(PDRAMRead)), P2DRAMWrite)
-    ax.plot(range(len(PDRAMRead)), P3DRAMWrite)
+    ax.plot(range(len(P3DRAMRead)), P3DRAMWrite)
+    #ax.plot(range(len(P6DRAMRead)), P6DRAMWrite)
     ax.set_xlabel('Layer', fontsize = 'large')
     ax.set_ylabel('Bandwidth (B/clk)', fontsize = 'large')
     ax.set_title('VGG16 DRAM Write Bandwidths')
-    ax.legend(['Baseline','Decouple','Squeeze','Sq+Dc','Sq+Dc+Tree'], loc=1)
+    ax.legend(stdPlotLegend, loc=1)
     ax.grid(True)
     plt.show()
 
@@ -307,11 +353,12 @@ def plotCycleUtil():
     ax.plot(range(len(layerNames)), squeezeCyles)
     ax.plot(range(len(layerNames)), PENNI2CombCyles)
     ax.plot(range(len(layerNames)), PENNI3CombCyles)
+    #ax.plot(range(len(layerNames)), PENNI6CombCyles)
     ax.plot(range(len(layerNames)), PENNI4CombCyles)
     ax.set_xlabel('Layer', fontsize = 'large')
     ax.set_ylabel('Cycle Count', fontsize = 'large')
     ax.set_title('VGG16 Cycle Count')
-    ax.legend(['Baseline','Decouple','Squeeze','Sq+Dc','Sq+Dc+Tree','PENNI'], loc=2)
+    ax.legend(stdPlotLegend+['Best case'], loc=2)
     ax.grid(True)
     #plt.xlim(80,100)
     #plt.ylim(0.65,0.82)
@@ -324,11 +371,12 @@ def plotCycleUtil():
     ax.plot(range(len(layerNames)), np.divide(baseCyles,squeezeCyles))
     ax.plot(range(len(layerNames)), np.divide(baseCyles,PENNI2CombCyles))
     ax.plot(range(len(layerNames)), np.divide(baseCyles,PENNI3CombCyles))
+    #ax.plot(range(len(layerNames)), np.divide(baseCyles,PENNI6CombCyles))
     ax.plot(range(len(layerNames)), np.divide(baseCyles,PENNI4CombCyles))
     ax.set_xlabel('Layer', fontsize = 'large')
     ax.set_ylabel('Speedup', fontsize = 'large')
     ax.set_title('VGG16 Speedup')
-    ax.legend(['Baseline','Decouple','Squeeze','Sq+Dc','Sq+Dc+Tree','PENNI'], loc=2)
+    ax.legend(stdPlotLegend+['Best case'], loc=2)
     ax.grid(True)
     plt.yscale("log")
     plt.show()
@@ -338,11 +386,12 @@ def plotCycleUtil():
     ax.plot(range(len(PENNICyles)), PENNICyles)
     ax.plot(range(len(PENNI2Cyles)), PENNI2Cyles)
     ax.plot(range(len(PENNI3Cyles)), PENNI3Cyles)
+    #ax.plot(range(len(PENNI6Cyles)), PENNI6Cyles)
     ax.plot(range(len(PENNI4Cyles)), PENNI4Cyles)
     ax.set_xlabel('Layer', fontsize = 'large')
     ax.set_ylabel('Cycle Count', fontsize = 'large')
     ax.set_title('Decoupled Layers Cycle Count')
-    ax.legend(['Decouple','Sq+Dc','Sq+Dc+Tree','PENNI'], loc=2)
+    ax.legend(['2Stage','PENNI+2Stage','PENNI+2Stage+ZeroSkip', 'Best case'], loc=2)
     ax.grid(True)
     plt.show()
     
@@ -352,12 +401,13 @@ def plotCycleUtil():
     ax.plot(range(len(PENNICyles)), PENNIUtilization)
     ax.plot(range(len(PENNI2Cyles)), PENNI2Utilization)
     ax.plot(range(len(PENNI3Cyles)), PENNI3Utilization)
+    #ax.plot(range(len(PENNI6Cyles)), PENNI6Utilization)
     ax.set_xlabel('Layer', fontsize = 'large')
     ax.set_ylabel('Percent utilization', fontsize = 'large')
     ax.set_title('Decoupled Layers Utilization')
-    ax.legend(['baseline','Decouple','Sq+Dc','Sq+Dc+Tree'], loc=3)
+    ax.legend(['baseline','Decouple','Sq+Dc','Sq+Dc+aa_coeff_sq'], loc=3)
     ax.grid(True)
     plt.show()
 
 plotCycleUtil()
-plotBW
+plotBW()

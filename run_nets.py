@@ -100,35 +100,55 @@ def run_net( ifmap_sram_size=1,
         if PENNI and ("DSC" in name):
             num_groups = num_channels
         if PENNI and ("WA" in name):
-            num_channels /= num_bases
-            # Assuming every DSConv is followed by a WA and only both types of layers exist at the beginning
-            # coeff_ptrs_layer format: [output_channel] = [basis*num_input_channels + input_channel]
             coeff_ptrs_layer = coeff_ptrs[row_idx // 2]
-            bw_str, detailed_str, util, clk = \
-                tg.gen_wa_traces(
-                                array_h = wa_array_h,
-                                array_w = wa_array_scaleout,
+            sq_ptrs = ld.squeezeCoeffIdx(coeff_ptrs_layer, array_w, num_bases, row_idx // 2, 'topologies/conv_nets/sparse_sample_weight.pt', True, False, 1)
+            
+
+            clk = 0
+            for chunk_idx, chunk in enumerate(sq_ptrs):
+                bw_str, detailed_str, util, clk_chunk = \
+                    tg.gen_all_traces(
+                                array_h = array_h,
+                                array_w = array_w,
                                 ifmap_h = ifmap_h,
                                 ifmap_w = ifmap_w,
-                                num_channels = num_channels,
-                                num_bases = num_bases,
-                                num_filt = num_filters,
-                                coeff_ptrs = coeff_ptrs_layer,
+                                filt_h = filt_h,
+                                filt_w = filt_w,
+                                num_channels = len(chunk),
+                                num_groups = num_groups,
+                                num_filt = array_w, # we make assumption here
+                                strides = strides,
+                                data_flow = data_flow,
                                 word_size_bytes = 1,
                                 filter_sram_size = filter_sram_size,
                                 ifmap_sram_size = ifmap_sram_size,
                                 ofmap_sram_size = ofmap_sram_size,
-                                wa_sram_size = wa_sram_size,
                                 filt_base = filter_base,
                                 ifmap_base = ifmap_base,
                                 ofmap_base = ofmap_base,
-                                wa_base = wa_base,
-                                sram_read_trace_file= net_name + "_" + name + "_sram_read.csv",
-                                sram_write_trace_file= net_name + "_" + name + "_sram_write.csv",
-                                dram_filter_trace_file=net_name + "_" + name + "_dram_filter_read.csv",
-                                dram_ifmap_trace_file= net_name + "_" + name + "_dram_ifmap_read.csv",
-                                dram_ofmap_trace_file= net_name + "_" + name + "_dram_ofmap_write.csv"
+                                sram_read_trace_file= net_name + "_" + name + "chunk" + str(chunk_idx) + "_sram_read.csv",
+                                sram_write_trace_file= net_name + "_" + name + "chunk" + str(chunk_idx) + "_sram_write.csv",
+                                dram_filter_trace_file=net_name + "_" + name + "chunk" + str(chunk_idx) + "_dram_filter_read.csv",
+                                dram_ifmap_trace_file= net_name + "_" + name + "chunk" + str(chunk_idx) + "_dram_ifmap_read.csv",
+                                dram_ofmap_trace_file= net_name + "_" + name + "chunk" + str(chunk_idx) + "_dram_ofmap_write.csv"
                                 )
+                clk += int(clk_chunk)
+                bw_log += bw_str
+                bw.write(bw_log + "\n")
+
+                detailed_log += detailed_str
+                detail.write(detailed_log + "\n")
+
+                max_bw_log += tg.gen_max_bw_numbers(
+                                sram_read_trace_file = net_name + "_" + name + "chunk" + str(chunk_idx) + "_sram_read.csv",
+                                sram_write_trace_file= net_name + "_" + name + "chunk" + str(chunk_idx) + "_sram_write.csv",
+                                dram_filter_trace_file=net_name + "_" + name + "chunk" + str(chunk_idx) + "_dram_filter_read.csv",
+                                dram_ifmap_trace_file= net_name + "_" + name + "chunk" + str(chunk_idx) + "_dram_ifmap_read.csv",
+                                dram_ofmap_trace_file= net_name + "_" + name + "chunk" + str(chunk_idx) + "_dram_ofmap_write.csv"
+                                )
+
+                maxbw.write(max_bw_log + "\n")
+            clk = str(clk)
             
         else:
             bw_str, detailed_str, util, clk =  \
@@ -157,13 +177,13 @@ def run_net( ifmap_sram_size=1,
                                 dram_ofmap_trace_file= net_name + "_" + name + "_dram_ofmap_write.csv"
                             )
 
-        bw_log += bw_str
-        bw.write(bw_log + "\n")
+            bw_log += bw_str
+            bw.write(bw_log + "\n")
 
-        detailed_log += detailed_str
-        detail.write(detailed_log + "\n")
+            detailed_log += detailed_str
+            detail.write(detailed_log + "\n")
 
-        max_bw_log += tg.gen_max_bw_numbers(
+            max_bw_log += tg.gen_max_bw_numbers(
                                 sram_read_trace_file = net_name + "_" + name + "_sram_read.csv",
                                 sram_write_trace_file= net_name + "_" + name + "_sram_write.csv",
                                 dram_filter_trace_file=net_name + "_" + name + "_dram_filter_read.csv",
@@ -171,7 +191,7 @@ def run_net( ifmap_sram_size=1,
                                 dram_ofmap_trace_file= net_name + "_" + name + "_dram_ofmap_write.csv"
                                 )
 
-        maxbw.write(max_bw_log + "\n")
+            maxbw.write(max_bw_log + "\n")
 
         # Anand: This is not needed, sram_traffic() returns this
         #last_line = subprocess.check_output(["tail","-1", net_name + "_" + name + "_sram_write.csv"] )
