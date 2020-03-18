@@ -49,6 +49,7 @@ def squeezeCoeffIdxOLD(coeff_ptrs_layer, array_w, numBases, layerIdx, pathName):
 
     # internal counter just for information
     tot_pruned = 0
+    nonzero_rows = 0
     
     for chunk in range(num_fold):
         num_pruned = 0
@@ -60,6 +61,7 @@ def squeezeCoeffIdxOLD(coeff_ptrs_layer, array_w, numBases, layerIdx, pathName):
         for i in range(max_len):
             if any(i in sublist for sublist in coeff_ptrs_layer[(chunk * array_w):maxL]):
                 sq_ptrs[len(sq_ptrs)-1].append(i)
+                nonzero_rows += 1
             else:
                 num_pruned += 1
                 tot_pruned += 1
@@ -83,6 +85,7 @@ def squeezeCoeffIdxOLD(coeff_ptrs_layer, array_w, numBases, layerIdx, pathName):
                         sq_ptrs[len(sq_ptrs)-1][w_idx].append(0)
         """
     #print("Number removed = {}, ratio = {}".format(tot_pruned, tot_pruned / (max_len * num_fold)))
+    print("Score for layer {}: {}".format(layerIdx, tot_pruned / (max_len*num_fold)))
     return sq_ptrs
 
 # return squeezed list of array_w-wide array for a single layer

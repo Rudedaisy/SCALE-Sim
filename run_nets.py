@@ -101,7 +101,7 @@ def run_net( ifmap_sram_size=1,
             num_groups = num_channels
         if PENNI and ("WA" in name):
             coeff_ptrs_layer = coeff_ptrs[row_idx // 2]
-            sq_ptrs = ld.squeezeCoeffIdx(coeff_ptrs_layer, array_w, num_bases, row_idx // 2, 'topologies/conv_nets/sparse_sample_weight.pt', True, False, 1)
+            sq_ptrs = ld.squeezeCoeffIdx(coeff_ptrs_layer, array_w, num_bases, row_idx // 2, 'topologies/conv_nets/sparse_sample_weight.pt', False, False, 1)
             
 
             clk = 0
