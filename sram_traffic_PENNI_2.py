@@ -9,6 +9,7 @@ def sram_traffic(
         ifmap_h=7, ifmap_w=7,
         filt_h=3, filt_w=3,
         num_channels=3,
+        chunk_coeffs=[],
         num_groups=1,
         strides=1, num_filt=8,
         ofmap_base=2000000, filt_base=1000000, ifmap_base=0,
@@ -39,7 +40,7 @@ def sram_traffic(
 
     cycles = 0
 
-    read_cycles, util, num_IFM_acc, num_filt_acc, num_filt_acc = gen_read_trace(
+    read_cycles, util, num_IFM_acc, num_filt_acc, num_filt_acc_kr = gen_read_trace(
                             cycle = cycles,
                             dim_rows = dimension_rows,
                             dim_cols = dimension_cols,
@@ -48,6 +49,7 @@ def sram_traffic(
                             ifmap_h = ifmap_h, ifmap_w= ifmap_w,
                             filt_h= filt_h, filt_w= filt_w,
                             num_channels= num_channels, stride=strides,
+                            #chunk_coeffs=chunk_coeffs,
                             num_groups=num_groups,
                             ofmap_h= int(E_h), ofmap_w= int(E_w), num_filters = num_filt,
                             filt_base= filt_base, ifmap_base= ifmap_base,
@@ -69,7 +71,7 @@ def sram_traffic(
 
     cycles = max(read_cycles, write_cycles)
     str_cycles = str(cycles)
-    return str_cycles, util, num_IFM_acc, num_filt_acc, num_filt_acc, num_OFM_acc
+    return str_cycles, util, num_IFM_acc, num_filt_acc, num_filt_acc_kr, num_OFM_acc
 # End of sram_traffic()
 
         
@@ -116,6 +118,7 @@ def gen_read_trace(
     v_fold_barrier  = []
     num_IFM_acc     = 0
     num_filt_acc    = 0
+    num_filt_acc_kr = 0
 
     # Variables for utilization calculation
     rows_used = 0
@@ -176,6 +179,7 @@ def gen_read_trace(
         filt_read  = ""
         rows_used = 0
         cols_used = 0
+        num_filt_acc_kr += 1
         
         # Generate address for ifmap
         for r in range(dim_rows):
@@ -259,8 +263,8 @@ def gen_read_trace(
                 
                 filt_addr = col_base_addr[c] + inc + filt_base 
                 filt_read += str(filt_addr) + ", "
-                cols_used += 1
                 num_filt_acc += 1
+                cols_used += 1
             else:
                 filt_read += ", "
 
@@ -318,7 +322,7 @@ def gen_read_trace(
 
     util_perc = (util / local_cycle) * 100
 
-    return (local_cycle + cycle), util_perc, num_IFM_acc, num_filt_acc, num_filt_acc
+    return (local_cycle + cycle), util_perc, num_IFM_acc, num_filt_acc, num_filt_acc_kr
 # End of gen_read_trace()
 
 

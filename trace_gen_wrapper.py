@@ -4,7 +4,7 @@ import sram_traffic_os as sram
 import sram_traffic_ws as sram_ws
 import sram_traffic_is as sram_is
 import sram_traffic_adder_tree as sram_adder_tree
-import sram_traffic_PENNI as sram_PENNI
+import sram_traffic_PENNI_2 as sram_PENNI
 
 def gen_wa_traces(
         array_h = 7,
@@ -97,6 +97,7 @@ def gen_all_traces(
         ifmap_h = 7, ifmap_w = 7,
         filt_h  = 3, filt_w = 3,
         num_channels = 3,
+        chunk_coeffs = [],
         num_groups = 1,
         strides = 1, num_filt = 8,
 
@@ -113,18 +114,30 @@ def gen_all_traces(
         dram_ifmap_trace_file = "dram_ifmap_read.csv",
         dram_ofmap_trace_file = "dram_ofmap_write.csv",
 
-        PENNI=False
+        DSC=False
     ):
 
     sram_cycles = 0
     util        = 0
 
     print("Generating traces and bw numbers")
-    if PENNI:
-        sram_cycles, util = \
-            sram.sram_traffic
+    if DSC:
+        sram_cycles, util, num_IFM_acc_layer, num_filt_acc_layer, num_filt_acc_kr_layer, num_OFM_acc_layer = \
+            sram_PENNI.sram_traffic(
+                dimension_rows= array_h,
+                dimension_cols= array_w,
+                ifmap_h=ifmap_h, ifmap_w=ifmap_w,
+                filt_h=filt_h, filt_w=filt_w,
+                num_channels=num_channels,
+                num_groups=num_groups,
+                strides=strides, num_filt=num_filt,
+                filt_base=filt_base, ifmap_base=ifmap_base,
+                ofmap_base = ofmap_base,
+                sram_read_trace_file=sram_read_trace_file,
+                sram_write_trace_file=sram_write_trace_file
+            )
     elif data_flow == 'os':
-        sram_cycles, util = \
+        sram_cycles, util, num_IFM_acc_layer, num_filt_acc_layer, num_filt_acc_kr_layer, num_OFM_acc_layer = \
             sram.sram_traffic(
                 dimension_rows= array_h,
                 dimension_cols= array_w,
@@ -197,7 +210,7 @@ def gen_all_traces(
                                  sram_read_trace_file)
                                  #array_h, array_w)
 
-    return bw_numbers, detailed_log, util, sram_cycles
+    return bw_numbers, detailed_log, util, sram_cycles, num_IFM_acc_layer, num_filt_acc_layer, num_filt_acc_kr_layer, num_OFM_acc_layer
 
 
 def gen_max_bw_numbers( dram_ifmap_trace_file, dram_filter_trace_file,

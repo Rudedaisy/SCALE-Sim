@@ -371,7 +371,32 @@ def plotCycleUtil():
     #plt.xlim(80,100)
     #plt.ylim(0.65,0.82)
     plt.show()
-    
+
+    # speedup                                                                                                                                                       
+    fig, ax = plt.subplots()
+    ax.plot(range(len(layerNames)), np.divide(baseCyles,baseCyles), linestyle='dashed', marker='o')
+    ax.plot(range(len(layerNames)), np.divide(baseCyles,PENNICombCyles), linestyle='dashed', marker='o')
+    #ax.plot(range(len(layerNames)), np.divide(baseCyles,PENNI6CombCyles), linestyle='dashed', marker='o')
+    ax.set_xlabel('Layer Idx', fontsize = 'large')
+    ax.set_ylabel('Speedup', fontsize = 'large')
+    #ax.set_title('VGG16 Speedup')
+    ax.legend(['Baseline', 'Co-Co (p)', 'Co-Co (c)'], loc=2)
+    ax.grid(True)
+    #plt.yscale("log")
+    plt.show()
+
+    fig, ax = plt.subplots()
+    ax.plot(range(len(layerNames)), np.divide(baseCyles,baseCyles), linestyle='dashed', marker='o')
+    ax.plot(range(len(layerNames)), np.divide(baseCyles,PENNICombCyles), linestyle='dashed', marker='o')
+    ax.plot(range(len(layerNames)), np.divide(baseCyles,PENNI6CombCyles), linestyle='dashed', marker='o')                                                          
+    ax.set_xlabel('Layer Idx', fontsize = 'large')
+    ax.set_ylabel('Speedup', fontsize = 'large')
+    ax.set_title('VGG16 Speedup')                                                                                                                                  
+    ax.legend(['Baseline', 'Co-Co (p)', 'Co-Co (c)'], loc=2)
+    ax.grid(True)
+    plt.yscale("log")                                                                                                                                              
+    plt.show()
+    """
     # speedup
     fig, ax = plt.subplots()
     ax.plot(range(len(layerNames)), np.divide(baseCyles,baseCyles))
@@ -388,7 +413,7 @@ def plotCycleUtil():
     ax.grid(True)
     plt.yscale("log")
     plt.show()
-    
+    """
     # PENNI methods cycle count
     fig, ax = plt.subplots()
     ax.plot(range(len(PENNICyles)), PENNICyles)

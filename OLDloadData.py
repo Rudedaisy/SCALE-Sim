@@ -52,29 +52,16 @@ def squeezeCoeffIdxOLD(coeff_ptrs_layer, array_w, numBases, layerIdx, pathName):
     tot_pruned = 0
     nonzero_rows = 0
     
-    for chunk_idx in range(num_fold):
+    for chunk in range(num_fold):
         num_pruned = 0
         sq_ptrs.append([])
-        # chunk: [out_idx] = [basis*num_input_channels + input_channels]                                                           
-        #chunk = []
-        
-        if (chunk_idx+1) * array_w >= len(coeff_ptrs_layer):
+        if (chunk+1) * array_w >= len(coeff_ptrs_layer):
             maxL = len(coeff_ptrs_layer)
         else:
-            maxL = (chunk_idx+1) * array_w
-        #for i in range(maxL - (chunk_idx * array_w)):
-            # append a new row for each out_channel within the chunk
-            #chunk.append([])
+            maxL = (chunk+1) * array_w
         for i in range(max_len):
-            if any(i in sublist for sublist in coeff_ptrs_layer[(chunk_idx * array_w):maxL]):
-                sq_ptrs[len(sq_ptrs)-1].append(i)  ## originally only this line
-
-                #for out_idx in range((chunk_idx * array_w), maxL):
-                #    if i in coeff_ptrs_layer[out_idx]:
-                #        chunk[out_idx - (chunk_idx * array_w)].append(i)
-                #    else:
-                #        chunk[out_idx - (chunk_idx * array_w)].append(0) ## IMPORTANT: we assume ifm_channel_idx 0 has a 0-value
-                #sq_ptrs[len(sq_ptrs)-1] = chunk
+            if any(i in sublist for sublist in coeff_ptrs_layer[(chunk * array_w):maxL]):
+                sq_ptrs[len(sq_ptrs)-1].append(i)
                 nonzero_rows += 1
             else:
                 num_pruned += 1
@@ -231,15 +218,13 @@ def squeezeCoeffIdx(coeff_ptrs_layer, array_w, numBases, layerIdx, pathName, dyn
 
         
 
-coeff_ptrs = loadCoeffIdx('topologies/conv_nets/VGG16_sparse_weight_BAL_9227.pt')
+coeff_ptrs = loadCoeffIdx('topologies/conv_nets/sparse_sample_weight.pt')
 """
 for i in range(len(coeff_ptrs)):
     coeff_ptrs_layer = coeff_ptrs[i]
-    sq_ptrs = squeezeCoeffIdx(coeff_ptrs_layer, 32, 5, i, 'topologies/conv_nets/VGG16_sparse_weight_BAL_9227.pt')
+    sq_ptrs = squeezeCoeffIdx(coeff_ptrs_layer, 32, 5, i, 'topologies/conv_nets/sparse_sample_weight.pt')
     print([len(chunk) for chunk in sq_ptrs])
-    #for chunk in sq_ptrs:
-     #   print(chunk)
-"""    
+"""
 #coeff_ptrs = loadCoeffIdx('topologies/conv_nets/sparse_sample_weight.pt')
 """
 # check if there are any common coeff_ptrs across outputs

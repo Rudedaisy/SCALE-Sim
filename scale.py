@@ -8,14 +8,15 @@ from absl import app
 FLAGS = flags.FLAGS
 #name of flag | default | explanation
 flags.DEFINE_string("arch_config","./configs/scale.cfg","file where we are getting our architechture from")
-flags.DEFINE_string("network","./topologies/conv_nets/VGG16_PENNIv2.csv","topology that we are reading")
+flags.DEFINE_string("network","./topologies/conv_nets/VGG16_PENNIv3.csv","topology that we are reading")
 
 
 class scale:
-    def __init__(self, sweep = False, save = False, PENNI = False):
+    def __init__(self, sweep = False, save = False, PENNI = False, WAComp = False):
         self.sweep = sweep
         self.save_space = save
         self.PENNI = PENNI
+        self.WAComp = WAComp
 
     def parse_config(self):
         general = 'general'
@@ -145,6 +146,7 @@ class scale:
                     topology_file = self.topology_file,
                     offset_list = offset_list,
                     PENNI = self.PENNI,
+                    WAComp = self.WAComp,
                     num_bases=5
                 )
         self.cleanup()
@@ -213,7 +215,7 @@ class scale:
                 self.run_once()
 
 def main(argv):
-    s = scale(save = False, sweep = False, PENNI = True)
+    s = scale(save = False, sweep = False, PENNI = True, WAComp = True)
     s.run_scale()
 
 if __name__ == '__main__':

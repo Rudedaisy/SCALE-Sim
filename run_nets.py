@@ -3,6 +3,8 @@ import loadData as ld
 import os
 import subprocess
 
+COEFF_IDX_FILE = 'topologies/conv_nets/VGG16_sparse_weight_BAL_9227.pt'
+
 
 def run_net( ifmap_sram_size=1,
              filter_sram_size=1,
@@ -18,11 +20,12 @@ def run_net( ifmap_sram_size=1,
              net_name='yolo_v2',
              offset_list = [0, 10000000, 20000000, 30000000],
              PENNI=False,
+             WAComp=False,
              num_bases=5
             ):
 
     # coeff_ptrs format: [layer][output_channel] = [basis*num_input_channels + input_channel]
-    coeff_ptrs = ld.loadCoeffIdx('topologies/conv_nets/sparse_sample_weight.pt')
+    coeff_ptrs = ld.loadCoeffIdx(COEFF_IDX_FILE)
 
     ifmap_sram_size *= 1024
     filter_sram_size *= 1024
@@ -57,11 +60,21 @@ def run_net( ifmap_sram_size=1,
 
 
     first = True
+
+    num_IFM_acc = 0
+    num_filt_acc = 0
+    num_filt_acc_kr = 0
+    num_OFM_acc = 0
     
     for row_idx, row in enumerate(param_file, start=-1):
         if first:
             first = False
             continue
+
+        num_IFM_acc_layer = 0
+        num_filt_acc_layer = 0
+        num_filt_acc_kr_layer = 0
+        num_OFM_acc_layer = 0
             
         elems = row.strip().split(',')
         #print(len(elems))
@@ -97,16 +110,18 @@ def run_net( ifmap_sram_size=1,
         # Added by Ed: in PENNI mode, set num_groups = num_channels if it's marked as Depthwise Seperable Conv (DSC)
         # if marked as Weighted Accumulate (WA), collect traces for the adder tree instead
         num_groups = 1
+        DSC = False
         if PENNI and ("DSC" in name):
             num_groups = num_channels
-        if PENNI and ("WA" in name):
+            DSC = True
+        if PENNI and WAComp and ("WA" in name):
             coeff_ptrs_layer = coeff_ptrs[row_idx // 2]
-            sq_ptrs = ld.squeezeCoeffIdx(coeff_ptrs_layer, array_w, num_bases, row_idx // 2, 'topologies/conv_nets/sparse_sample_weight.pt', False, False, 1)
+            sq_ptrs = ld.squeezeCoeffIdx(coeff_ptrs_layer, array_w, num_bases, row_idx // 2, COEFF_IDX_FILE, False, False, 1)
             
 
             clk = 0
             for chunk_idx, chunk in enumerate(sq_ptrs):
-                bw_str, detailed_str, util, clk_chunk = \
+                bw_str, detailed_str, util, clk_chunk, num_IFM_acc_chunk, num_filt_acc_chunk, num_filt_acc_kr_chunk, num_OFM_acc_chunk = \
                     tg.gen_all_traces(
                                 array_h = array_h,
                                 array_w = array_w,
@@ -115,6 +130,7 @@ def run_net( ifmap_sram_size=1,
                                 filt_h = filt_h,
                                 filt_w = filt_w,
                                 num_channels = len(chunk),
+                                chunk_coeffs = chunk,
                                 num_groups = num_groups,
                                 num_filt = array_w, # we make assumption here
                                 strides = strides,
@@ -130,9 +146,14 @@ def run_net( ifmap_sram_size=1,
                                 sram_write_trace_file= net_name + "_" + name + "chunk" + str(chunk_idx) + "_sram_write.csv",
                                 dram_filter_trace_file=net_name + "_" + name + "chunk" + str(chunk_idx) + "_dram_filter_read.csv",
                                 dram_ifmap_trace_file= net_name + "_" + name + "chunk" + str(chunk_idx) + "_dram_ifmap_read.csv",
-                                dram_ofmap_trace_file= net_name + "_" + name + "chunk" + str(chunk_idx) + "_dram_ofmap_write.csv"
+                                dram_ofmap_trace_file= net_name + "_" + name + "chunk" + str(chunk_idx) + "_dram_ofmap_write.csv",
                                 )
                 clk += int(clk_chunk)
+                num_IFM_acc_layer += num_IFM_acc_chunk
+                num_filt_acc_layer += num_filt_acc_chunk
+                num_filt_acc_kr_layer += num_filt_acc_kr_chunk
+                num_OFM_acc_layer += num_OFM_acc_chunk
+                
                 bw_log += bw_str
                 bw.write(bw_log + "\n")
 
@@ -151,7 +172,7 @@ def run_net( ifmap_sram_size=1,
             clk = str(clk)
             
         else:
-            bw_str, detailed_str, util, clk =  \
+            bw_str, detailed_str, util, clk, num_IFM_acc_layer, num_filt_acc_layer, num_filt_acc_kr_layer, num_OFM_acc_layer =  \
             tg.gen_all_traces(  array_h = array_h,
                                 array_w = array_w,
                                 ifmap_h = ifmap_h,
@@ -174,7 +195,8 @@ def run_net( ifmap_sram_size=1,
                                 sram_write_trace_file= net_name + "_" + name + "_sram_write.csv",
                                 dram_filter_trace_file=net_name + "_" + name + "_dram_filter_read.csv",
                                 dram_ifmap_trace_file= net_name + "_" + name + "_dram_ifmap_read.csv",
-                                dram_ofmap_trace_file= net_name + "_" + name + "_dram_ofmap_write.csv"
+                                dram_ofmap_trace_file= net_name + "_" + name + "_dram_ofmap_write.csv",
+                                DSC = DSC
                             )
 
             bw_log += bw_str
@@ -198,9 +220,23 @@ def run_net( ifmap_sram_size=1,
         #clk = str(last_line).split(',')[0]
         #clk = str(clk).split("'")[1]
 
+        if DSC:#True:
+            num_IFM_acc += num_IFM_acc_layer
+            num_filt_acc += num_filt_acc_layer
+            num_filt_acc_kr += num_filt_acc_kr_layer
+            num_OFM_acc += num_OFM_acc_layer
+
         util_str = str(util)
         line = name + ",\t" + clk +",\t" + util_str +",\n"
         cycl.write(line)
+
+    print("SRAM ACCESS COUNTS")
+    print("IFM SRAM access: {}".format(num_IFM_acc))
+    print("OFM SRAM access: {}".format(num_OFM_acc))
+    print("Filt SRAM access (no kr): {}".format(num_filt_acc))
+    print("Filt SRAM access (with kr): {}".format(num_filt_acc_kr))
+    print("Total SRAM reads (with kr): {}".format(num_IFM_acc + num_filt_acc + num_OFM_acc))
+    #print("Total SRAM writes (with kr): {}".format(num_IFM_acc + num_filt_acc_kr + num_OFM_acc))
 
     bw.close()
     maxbw.close()
