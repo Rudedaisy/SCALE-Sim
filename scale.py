@@ -8,45 +8,65 @@ from absl import app
 FLAGS = flags.FLAGS
 #name of flag | default | explanation
 flags.DEFINE_string("arch_config","./configs/scale.cfg","file where we are getting our architechture from")
-flags.DEFINE_string("network","./topologies/conv_nets/VGG16_PENNIv3.csv","topology that we are reading")
+flags.DEFINE_string("network","./topologies/conv_nets/ResNet50_ImageNet_baseline.csv","topology that we are reading")
+#flags.DEFINE_string("network","./topologies/conv_nets/foo.csv","topology that we are reading")
+flags.DEFINE_string("run_name", "", "run_name path override")
+flags.DEFINE_integer("height", None, "Array Height override")
+flags.DEFINE_integer("width", None, "Array Width override")
+flags.DEFINE_integer("ifm_sram", None, "IFM SRAM size override")
+flags.DEFINE_integer("filt_sram", None, "Filter SRAM size override")
+flags.DEFINE_integer("ofm_sram", None, "OFM SRAM size override")
 
 
 class scale:
-    def __init__(self, sweep = False, save = False, PENNI = False, WAComp = False):
+    def __init__(self, sweep = False, save = False, PENNI = False, WAComp = False, alternateOsWs = False, dynamicShape=False):
         self.sweep = sweep
         self.save_space = save
         self.PENNI = PENNI
         self.WAComp = WAComp
+        self.alternateOsWs = alternateOsWs
+        self.dynamicShape = dynamicShape
+        self.num_IFM_acc = 0
+        self.num_IFM_acc_fr = 0
+        self.num_OFM_acc = 0
+        self.num_filt_acc = 0
+        self.num_filt_acc_kr = 0
 
     def parse_config(self):
         general = 'general'
         arch_sec = 'architecture_presets'
         net_sec  = 'network_presets'
-       # config_filename = "./scale.cfg"
+        # config_filename = "./scale.cfg"
         config_filename = FLAGS.arch_config
         print("Using Architechture from ",config_filename)
 
         config = cp.ConfigParser()
         config.read(config_filename)
 
-        ## Read the run name
-        self.run_name = config.get(general, 'run_name')
+        if FLAGS.run_name == "":
+            ## Read the run name
+            self.run_name = (config.get(general, 'run_name')).replace('"', '')
+        else:
+            self.run_name = FLAGS.run_name
 
         ## Read the architecture_presets
-        ## Array height min, max
-        ar_h = config.get(arch_sec, 'ArrayHeight').split(',')
-        self.ar_h_min = ar_h[0].strip()
+        if FLAGS.height == None:
+            ## Array height min, max
+            ar_h = config.get(arch_sec, 'ArrayHeight').split(',')
+            self.ar_h_min = ar_h[0].strip()
+            if len(ar_h) > 1:
+                self.ar_h_max = ar_h[1].strip()
+        else:
+            self.ar_h_min = FLAGS.height
 
-        if len(ar_h) > 1:
-            self.ar_h_max = ar_h[1].strip()
-        #print("Min: " + ar_h_min + " Max: " + ar_h_max)
-
-        ## Array width min, max
-        ar_w = config.get(arch_sec, 'ArrayWidth').split(',')
-        self.ar_w_min = ar_w[0].strip()
-
-        if len(ar_w) > 1:
-            self.ar_w_max = ar_w[1].strip()
+        if FLAGS.width == None:
+            ## Array width min, max
+            ar_w = config.get(arch_sec, 'ArrayWidth').split(',')
+            self.ar_w_min = ar_w[0].strip()
+            if len(ar_w) > 1:
+                self.ar_w_max = ar_w[1].strip()
+        else:
+            self.ar_w_min = FLAGS.width
 
         ## WA array dimensions
         wa_ar_h = config.get(arch_sec, 'WAArrayHeight')
@@ -54,25 +74,30 @@ class scale:
         wa_ar_scaleout = config.get(arch_sec, 'WAArrayScale')
         self.wa_ar_scaleout = wa_ar_scaleout.strip()
 
-        ## IFMAP SRAM buffer min, max
-        ifmap_sram = config.get(arch_sec, 'IfmapSramSz').split(',')
-        self.isram_min = ifmap_sram[0].strip()
+        if FLAGS.ifm_sram == None:
+            ## IFMAP SRAM buffer min, max
+            ifmap_sram = config.get(arch_sec, 'IfmapSramSz').split(',')
+            self.isram_min = ifmap_sram[0].strip()
+            if len(ifmap_sram) > 1:
+                self.isram_max = ifmap_sram[1].strip()
+        else:
+            self.isram_min = FLAGS.ifm_sram
 
-        if len(ifmap_sram) > 1:
-            self.isram_max = ifmap_sram[1].strip()
+        if FLAGS.filt_sram == None:
+            ## FILTER SRAM buffer min, max
+            filter_sram = config.get(arch_sec, 'FilterSramSz').split(',')
+            self.fsram_min = filter_sram[0].strip()
+            if len(filter_sram) > 1:
+                self.fsram_max = filter_sram[1].strip()
+        else:
+            self.fsram_min = FLAGS.filt_sram
 
-
-        ## FILTER SRAM buffer min, max
-        filter_sram = config.get(arch_sec, 'FilterSramSz').split(',')
-        self.fsram_min = filter_sram[0].strip()
-
-        if len(filter_sram) > 1:
-            self.fsram_max = filter_sram[1].strip()
-
-
-        ## OFMAP SRAM buffer min, max
-        ofmap_sram = config.get(arch_sec, 'OfmapSramSz').split(',')
-        self.osram_min = ofmap_sram[0].strip()
+        if FLAGS.ofm_sram == None:
+            ## OFMAP SRAM buffer min, max
+            ofmap_sram = config.get(arch_sec, 'OfmapSramSz').split(',')
+            self.osram_min = ofmap_sram[0].strip()
+        else:
+            self.osram_min = FLAGS.ofm_sram
 
         ## Coeff Ptrs SRAM buffer min, max
         wa_sram = config.get(arch_sec, 'WASramSz').split(',')
@@ -133,7 +158,8 @@ class scale:
         #print("Net name = " + net_name)
         offset_list = [self.ifmap_offset, self.filter_offset, self.ofmap_offset, self.wa_offset]
 
-        r.run_net(  ifmap_sram_size  = int(self.isram_min),
+        self.num_IFM_acc, self.num_IFM_acc_fr, self.num_OFM_acc, self.num_filt_acc, self.num_filt_acc_kr = r.run_net(
+                    ifmap_sram_size  = int(self.isram_min),
                     filter_sram_size = int(self.fsram_min),
                     ofmap_sram_size  = int(self.osram_min),
                     wa_sram_size = int(self.wa_sram),
@@ -147,7 +173,11 @@ class scale:
                     offset_list = offset_list,
                     PENNI = self.PENNI,
                     WAComp = self.WAComp,
-                    num_bases=5
+                    num_bases=5,
+                    alternateOsWs=self.alternateOsWs,
+                    dynamicShape=self.dynamicShape, 
+                    dy_dim_list=[5, 10, 20, 40, 80]
+                    #dy_dim_list=[5, 10, 20]
                 )
         self.cleanup()
         print("************ SCALE SIM Run Complete ****************")
@@ -190,6 +220,17 @@ class scale:
             cmd = "rm -rf " + path +"/layer_wise"
             os.system(cmd)
 
+        f = open(path + "/" + net_name + "_sram_accesses.csv", 'w')
+        sram_data = "num_IFM_acc,\tnum_IFM_acc_fr,\tnum_OFM_acc,\tnum_filt_acc,\tnum_filt_acc_kr,\n"
+        for i in range(len(self.num_IFM_acc)):
+             sram_data += str(self.num_IFM_acc[i]) + ",\t"
+             sram_data += str(self.num_IFM_acc_fr[i]) + ",\t"
+             sram_data += str(self.num_OFM_acc[i]) + ",\t"
+             sram_data += str(self.num_filt_acc[i]) + ",\t"
+             sram_data += str(self.num_filt_acc_kr[i]) + ",\n"
+        f.write(sram_data)
+        f.close()
+
 
     def run_sweep(self):
 
@@ -215,7 +256,8 @@ class scale:
                 self.run_once()
 
 def main(argv):
-    s = scale(save = False, sweep = False, PENNI = True, WAComp = True)
+    # note: dynamicShape params apply to SKC stage only
+    s = scale(save = False, sweep = False, PENNI = False, WAComp = False, alternateOsWs=False, dynamicShape=False)
     s.run_scale()
 
 if __name__ == '__main__':

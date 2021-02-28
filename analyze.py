@@ -11,13 +11,14 @@ scaleOut = 32
 CFLAG = 0
 
 # base path | PENNI path
-paths = ["outputs/VGG16_CIFAR10_32x32_os/", "outputs/VGG16_CIFAR10_32x32_os_PENNI/", "outputs/VGG16_CIFAR10_32x32_os_squeeze/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv2/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv5/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv7/"]
+paths = ["outputs/VGG16_CIFAR10_32x32_os/", "outputs/VGG16_CIFAR10_32x32_os_PENNI/", "outputs/VGG16_CIFAR10_32x32_os_squeeze/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv2/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv5/", "outputs/VGG19_CIFAR10_32x32_os_PENNIv7/"]
 # cycles | avg_bandwidth
 baseFileNames = ["VGG16_cycles.csv", "VGG16_avg_bw.csv"]
 PENNIFileNames = ["VGG16_PENNIv1_cycles.csv", "VGG16_PENNIv1_avg_bw.csv"]
 squeezeFileNames = ["VGG16_squeeze2_cycles.csv", "VGG16_squeeze2_avg_bw.csv"]
 PENNI2FileNames = ["VGG16_PENNIv2_cycles.csv", "VGG16_PENNIv2_avg_bw.csv"]
 PENNI3FileNames = ["VGG16_PENNIv3_cycles.csv", "VGG16_PENNIv3_avg_bw.csv"]
+AlexNetFileNames = ["VGG19_cycles.csv", "VGG19_avg_bw.csv"]
 files = []
 for i in range(len(baseFileNames)):
     files.append(paths[0] + baseFileNames[i])
@@ -30,7 +31,7 @@ for i in range(len(PENNI2FileNames)):
 for i in range(len(PENNI2FileNames)):
     files.append(paths[4] + PENNI2FileNames[i])
 for i in range(len(PENNI3FileNames)):
-    files.append(paths[5] + PENNI3FileNames[i])
+    files.append(paths[5] + AlexNetFileNames[i])
 
 # base dram and sram bandwidths
 baseDRAMRead = []
@@ -417,5 +418,5 @@ def plotCycleUtil():
     ax.grid(True)
     plt.show()
 
-plotCycleUtil()
-plotBW()
+#plotCycleUtil()
+#plotBW()

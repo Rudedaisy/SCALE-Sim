@@ -8,22 +8,81 @@ from tqdm import tqdm
 from copy import deepcopy
 
 CHECK = 4
+#isBottle = [0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1]
+IS_RESNET = False
+IS_MOBILEV2 = False
+
+def isBottle(name):
+    # assumes that bottleneck layers of ResNet are of the form layer*.conv1 or layer*.conv3
+    if len(name) < 6:
+        return False
+    suffix = name[-6:]
+    if suffix == ".conv1" or suffix == ".conv3":
+        return True
+
+    if len(name) >= 11 and name[-11:] == ".shortcut.0":
+        return True
+    
+    return False
 
 def loadCoeffIdx(pathName):
     # Intermediate feature map for layer 'l' format expected: [h][w][bases][input_channel]
     # [layer][output_channel] = [basis*num_input_channels + input_channel]
     data = torch.load(pathName)
-    widths = [3] # first input channel width in VGG16
+    #print((data['indices'][1]))
+    #print(data['indices'][0])
+    widths = [3] # first input channel width in CIFAR10 and ImageNet
     widths.extend(data['width'])
+    if 'name' in data:
+        names = data['name']
+    else:
+        names = [""]
+
+    #print(len(data['values'][1]))
+    #print(len(data['ori'][1]))
+    #print(len(data['ori'][1][0]))
+    #print(data['indices'][1])
+    
+    #"""
+    #print("Keys in data")
+    #for key, value in data.items() :
+    #    print(key)
+    print("Layer names")
+    for name in data['name']:
+        print(name)
+    #"""
+
     coeff_ptrs = []
     for layer_idx, layer in enumerate(data['indices']):
+    #for layer_idx, layer in enumerate(data['ori']):
+        #print("Appending layer {}".format(layer_idx))
         coeff_ptrs.append([])
         coeff_ptrs[layer_idx] = [[] for _ in range(widths[layer_idx + 1])]
-        for c in layer:
-            coeff_ptrs[layer_idx][c[0] // widths[layer_idx]].append(c[1]*widths[layer_idx] + (c[0] % widths[layer_idx]))
+
+        """
+        for out_channel_idx, out_channel in enumerate(layer):
+            for c_idx, c in enumerate(out_channel):
+                #print(c)
+                if not math.isclose(c, 0, abs_tol=1e-6):
+                    coeff_ptrs[layer_idx][out_channel_idx].append(c_idx)
+                    #coeff_ptrs[layer_idx][len(layer) - 1 - out_channel_idx].append(c_idx)
+        continue
+        """
+        if (IS_RESNET or IS_MOBILEV2) and isBottle(names[layer_idx]): #False: #isBottle[layer_idx]: # disable for non-ResNet models -------------------------
+            for c in layer:
+                coeff_ptrs[layer_idx][c[0]].append(c[1])
+        else:
+            for c in layer:
+                coeff_ptrs[layer_idx][c[0] // widths[layer_idx]].append(c[1]*widths[layer_idx] + (c[0] % widths[layer_idx]))
+                #if (layer_idx == 0):
+                #    print("({}){} -> {}".format(widths[layer_idx],c[0],c[0] // widths[layer_idx]))
         for out_channel in range(len(coeff_ptrs[layer_idx])):
             coeff_ptrs[layer_idx][out_channel].sort()
 
+    #for out_channel in range(len(coeff_ptrs[0])):
+    #    print(coeff_ptrs[0][out_channel])
+
+    #print(coeff_ptrs[1][:10])
     print(widths)
     """
     check = 5
@@ -43,10 +102,18 @@ def squeezeCoeffIdxOLD(coeff_ptrs_layer, array_w, numBases, layerIdx, pathName):
     data = torch.load(pathName)
     widths = [3] # first input channel width in VGG16
     widths.extend(data['width'])
+    if 'name' in data:
+        names = data['name']
+    else:
+        names =	[""]
+
+    if IS_RESNET and isBottle(names[layerIdx]): #False: #isBottle[layerIdx]: # disable this check for non-ResNet50 -------------------------------
+        print("isBottle")
+        numBases = 1
     
     sq_ptrs = []
     num_fold = math.ceil(len(coeff_ptrs_layer) / array_w)
-    max_len = numBases * widths[layerIdx]
+    max_len = int(numBases) * widths[layerIdx]
 
     # internal counter just for information
     tot_pruned = 0
@@ -55,52 +122,32 @@ def squeezeCoeffIdxOLD(coeff_ptrs_layer, array_w, numBases, layerIdx, pathName):
     for chunk_idx in range(num_fold):
         num_pruned = 0
         sq_ptrs.append([])
-        # chunk: [out_idx] = [basis*num_input_channels + input_channels]                                                           
-        #chunk = []
         
         if (chunk_idx+1) * array_w >= len(coeff_ptrs_layer):
             maxL = len(coeff_ptrs_layer)
         else:
             maxL = (chunk_idx+1) * array_w
-        #for i in range(maxL - (chunk_idx * array_w)):
-            # append a new row for each out_channel within the chunk
-            #chunk.append([])
-        for i in range(max_len):
+
+        for i in range(int(max_len)):
             if any(i in sublist for sublist in coeff_ptrs_layer[(chunk_idx * array_w):maxL]):
                 sq_ptrs[len(sq_ptrs)-1].append(i)  ## originally only this line
 
-                #for out_idx in range((chunk_idx * array_w), maxL):
-                #    if i in coeff_ptrs_layer[out_idx]:
-                #        chunk[out_idx - (chunk_idx * array_w)].append(i)
-                #    else:
-                #        chunk[out_idx - (chunk_idx * array_w)].append(0) ## IMPORTANT: we assume ifm_channel_idx 0 has a 0-value
-                #sq_ptrs[len(sq_ptrs)-1] = chunk
                 nonzero_rows += 1
             else:
                 num_pruned += 1
                 tot_pruned += 1
+
+        """
+        if len(sq_ptrs[len(sq_ptrs)-1]) == 0:
+            print("Entire chunk pruned!")
+            print(coeff_ptrs_layer[(chunk_idx * array_w):maxL])
+        #"""
         #print("Number removed = {}, ratio = {}".format(num_pruned, num_pruned / max_len))
         
-        """
-        sq_ptrs.extend([[] for __ in range(array_w)])
-        for i in range(max_len):
-            # iterate through each possible coeff idx
-            # if found, any corresponding out_channel will be appended the idx
-            #           other channels will be a appended a false 0
-            if (chunk+1) * array_w >= len(coeff_ptrs_layer):
-                maxL = len(coeff_ptrs_layer)
-            else:
-                maxL = (chunk+1) * array_w
-            if i in coeff_ptrs_layer[(chunk * array_w):maxL]:
-                for w_idx in range(maxL):
-                    if i in coeff_ptrs_layer[(chunk * array_w) + w_idx]:
-                        sq_ptrs[len(sq_ptrs)-1][w_idx].append(i)
-                    else:
-                        sq_ptrs[len(sq_ptrs)-1][w_idx].append(0)
-        """
     #print("Number removed = {}, ratio = {}".format(tot_pruned, tot_pruned / (max_len * num_fold)))
-    print("Score for layer {}: {}".format(layerIdx, tot_pruned / (max_len*num_fold)))
-    return sq_ptrs
+    print("Score for layer {}: {}".format(layerIdx+1, tot_pruned / (max_len*num_fold)))
+    #print("Max len: {}".format(max_len))
+    return sq_ptrs #, tot_pruned, (max_len*num_fold)
 
 # return squeezed list of array_w-wide array for a single layer
 def squeezeCoeffIdxOnce(coeff_ptrs_layer, chunks, array_w, in_len):
@@ -231,15 +278,51 @@ def squeezeCoeffIdx(coeff_ptrs_layer, array_w, numBases, layerIdx, pathName, dyn
 
         
 
-coeff_ptrs = loadCoeffIdx('topologies/conv_nets/VGG16_sparse_weight_BAL_9227.pt')
+#pathName = 'topologies/conv_nets/ResNet50_sparse_weight_7566_738MFLOPs.h5'
+#pathName = 'topologies/conv_nets/ResNet50_sparse_weight.h5'
+#pathName = "topologies/conv_nets/VGG16_ImageNet_sparse_weight.h5"
+#pathName = "topologies/conv_nets/ResNet18_9443_sparse_weight.h5"
+#pathName = "topologies/conv_nets/ResNet56_9248_shrinked_sparse_weight.h5"
+#pathName = "topologies/conv_nets/ResNet18_9272_sparse_weight.h5"
+#pathName = "topologies/conv_nets/ResNet56_XXXX_sparse_weight.h5"
+#pathName = "topologies/conv_nets/VGG16_sparse_weight_BAL_9227.pt"
+#pathName = "topologies/conv_nets/OLD_VGG16_9301_sparse_weight.h5"
+#pathName = "topologies/conv_nets/VGG16_9370_sparse_weight.h5"
+#pathName = "topologies/conv_nets/ResNet18_9430_sparse_weight.h5"
+#pathName = "topologies/conv_nets/ResNet50_sparse_weight_7604.h5"
+#pathName = "topologies/conv_nets/MobileNetV2_9335_sparse_weight.h5"
+pathName = "topologies/conv_nets/ResNet152_9518_sparse_weight.h5"
+
+#coeff_ptrs = loadCoeffIdx(pathName)
+
+#print(coeff_ptrs[1])
 """
+data = torch.load(pathName)
+widths = [3] # first input channel width in VGG16                                                                                                               
+widths.extend(data['width'])
+isB = [0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1]
+#print(coeff_ptrs[1][0])
+#print(coeff_ptrs[1][1])
+totPruned = 0
+totMax = 0
+array_w = 5
 for i in range(len(coeff_ptrs)):
     coeff_ptrs_layer = coeff_ptrs[i]
-    sq_ptrs = squeezeCoeffIdx(coeff_ptrs_layer, 32, 5, i, 'topologies/conv_nets/VGG16_sparse_weight_BAL_9227.pt')
+    numBases = 5
+    #if IS_RESNET and isB[i]:
+    #    numBases = 1
+
+    #sq_ptrs, layerPruned, layerMax = squeezeCoeffIdx(coeff_ptrs_layer, widths[i+1], 5, i, pathName)
+    #sq_ptrs = squeezeCoeffIdx(coeff_ptrs_layer, widths[i+1], 5, i, pathName)
+    sq_ptrs = squeezeCoeffIdx(coeff_ptrs_layer, array_w, 5, i, pathName)
+    #totPruned += layerPruned
+    #totMax += layerMax
     print([len(chunk) for chunk in sq_ptrs])
+    print()
     #for chunk in sq_ptrs:
      #   print(chunk)
-"""    
+#print("Overall score: {}".format(float(totPruned) / float(totMax)))
+#"""
 #coeff_ptrs = loadCoeffIdx('topologies/conv_nets/sparse_sample_weight.pt')
 """
 # check if there are any common coeff_ptrs across outputs

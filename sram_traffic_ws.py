@@ -12,13 +12,14 @@ def sram_traffic(
         strides=1, num_filt=8,
         ofmap_base=2000000, filt_base=1000000, ifmap_base=0,
         sram_read_trace_file="sram_read.csv",
-        sram_write_trace_file="sram_write.csv"
+        sram_write_trace_file="sram_write.csv",
+        PENNI=False,
+        DSC=False
     ):
 
     # Added by ed: Number of groups impacts the filter size
     assert num_channels % num_groups == 0, "Number of groups ({}) does not partition number of channels ({}) cleanly".format(num_groups, num_channels)
     filt_chan = num_channels // num_groups
-    num_filt *= num_groups # -------- CHECK FOR CORRECTNESS
 
     # Dimensions of output feature map channel
     E_h = math.floor((ifmap_h - filt_h + strides) / strides)
@@ -143,16 +144,22 @@ def sram_traffic(
 
             parallel_window = math.ceil(rem / dimension_cols)
             parallel_window = int(min(max_parallel_window, parallel_window))
-        
+
+            temp_cycles = cycles
+
             cycles_filter = gen_filter_trace(
                                 cycle = cycles,
                                 num_rows = dimension_rows, num_cols = dimension_cols,
-                                filt_h = filt_h, filt_w = filt_w, num_channels = num_channels,
+                                filt_h = filt_h, filt_w = filt_w, num_channels = filt_chan, #initial: num_channels,
                                 col_addr = col_addr_list, 
                                 parallel_window=parallel_window,
                                 filters_this_fold=cols_this_fold,
                                 sram_read_trace_file=sram_read_trace_file
                                 )
+            if PENNI and DSC:
+                # Filter is only placed once (assuming num_bases <= array_w), so bypass the filter cycle count
+                #print("Ditching " + str(cycles_filter - temp_cycles) + "cycles")
+                cycles_filter = temp_cycles
 
             cycles_ifmap, rows_this_fold\
                             = gen_ifmap_trace(
@@ -161,6 +168,7 @@ def sram_traffic(
                             ifmap_h = ifmap_h, ifmap_w = ifmap_w,
                             filt_h = filt_h, filt_w = filt_w,
                             num_channels = num_channels, stride = strides,
+                            num_groups = num_groups,
                             parallel_window = parallel_window,
                             sram_read_trace_file = sram_read_trace_file
                             )
@@ -198,6 +206,10 @@ def sram_traffic(
             prev_cycl = cycles
 
         remaining_cols -= cols_this_fold
+
+    if PENNI and DSC:
+        # Compensate cycles for initial filter load
+        cycles += parallel_window * px_per_conv_window
 
     final = str(cycles)
     final_util = (util / compute_cycles) * 100
@@ -261,9 +273,12 @@ def gen_ifmap_trace(
         ifmap_h = 7, ifmap_w = 7,
         filt_h = 3, filt_w = 3,
         num_channels = 3, stride = 1,
+        num_groups = 1,
         parallel_window = 1,
         sram_read_trace_file = "sram_read.csv"
 ):
+    filt_chan = num_channels // num_groups
+
     outfile = open(sram_read_trace_file,'a')
     postfix = ""
     for c in range(num_cols):
@@ -272,8 +287,8 @@ def gen_ifmap_trace(
     E_h = math.floor((ifmap_h - filt_h + stride) / stride)
     E_w = math.floor((ifmap_w - filt_w + stride) / stride)
     e2  = E_h * E_w
-    r2c = filt_h * filt_w * num_channels
-    rc = filt_w * num_channels
+    r2c = filt_h * filt_w * filt_chan
+    rc = filt_w * filt_chan
     hc = ifmap_w * num_channels
 
     idle = num_rows - (r2c * parallel_window)
@@ -324,7 +339,7 @@ def gen_ifmap_trace(
             ifmap_row = math.floor(base_addr / hc)
             base_addr = (ifmap_row +  stride) * hc
         else:
-            base_addr += stride * num_channels
+            base_addr += stride * filt_chan
         #print("OFAMP px = " + str(e+1) + " base_addr: " + str(base_addr))
 
     outfile.close()

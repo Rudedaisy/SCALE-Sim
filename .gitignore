@@ -3,4 +3,5 @@ original_repo
 __pycache__
 
 *~
-outputs
+layer_wise/
+outputs/

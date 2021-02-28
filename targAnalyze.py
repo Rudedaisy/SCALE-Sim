@@ -11,7 +11,7 @@ scaleOut = 32
 CFLAG = 0
 
 # base path | PENNI path
-paths = ["outputs/VGG16_CIFAR10_32x32_os/", "outputs/VGG16_CIFAR10_32x32_os_PENNI/", "outputs/VGG16_CIFAR10_32x32_os_squeeze/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv2/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv5/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv7/"]
+paths = ["outputs/VGG16_CIFAR10_32x32_os/", "outputs/VGG16_CIFAR10_32x32_os_PENNI/", "outputs/VGG16_CIFAR10_32x32_os_squeeze/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv2/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv5/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv7/", "outputs/VGG16_CIFAR10_32x32_os_PENNIv7_altws/"]
 # cycles | avg_bandwidth
 baseFileNames = ["VGG16_cycles.csv", "VGG16_avg_bw.csv"]
 PENNIFileNames = ["VGG16_PENNIv1_cycles.csv", "VGG16_PENNIv1_avg_bw.csv"]
@@ -31,6 +31,8 @@ for i in range(len(PENNI2FileNames)):
     files.append(paths[4] + PENNI2FileNames[i])
 for i in range(len(PENNI3FileNames)):
     files.append(paths[5] + PENNI3FileNames[i])
+for i in range(len(PENNI3FileNames)):
+    files.append(paths[6] + PENNI3FileNames[i])
 
 # base dram and sram bandwidths
 baseDRAMRead = []
@@ -253,13 +255,31 @@ for idx, layer in enumerate(f, start=-1):
     #PENNI4Utilization.append(float(elems[2]))
 f.close()
 
+PENNIAltCyles = []
+PENNIAltCombCyles = []
+PENNIAltUtilization = []
+f = open(files[12],'r')
+for idx, layer in enumerate(f):
+    if idx == 0:
+        continue
+    elems = layer.strip().split(',')
+    PENNIAltCyles.append(float(elems[1]))
+    if "WA" in elems[0]:
+        PENNIAltCombCyles[len(PENNIAltCombCyles) - 1] += float(elems[1])
+    else:
+        PENNIAltCombCyles.append(float(elems[1]))
+
+    PENNIAltUtilization.append(float(elems[2]))
+f.close()
+
 # --------------------
 # --- Print Results --
 # --------------------
 
 print("Total cycle count")
 print("Baseline: {}".format(np.sum(baseCyles)))
-print("Ours: {}".format(np.sum(PENNI6CombCyles)))
+print("Ours (p): {}".format(np.sum(PENNICombCyles)))
+print("Ours (c): {}".format(np.sum(PENNI6CombCyles)))
 print("Max cycle count")
 print("Baseline: {}".format(np.max(baseCyles)))
 print("Ours: {}".format(np.max(PENNI6CombCyles)))
@@ -442,5 +462,34 @@ def plotCycleUtil():
     ax.grid(True)
     plt.show()
 
+    # OS vs alt_os_ws
+    Cyles = []
+    AltCyles = []
+    for i in range(len(PENNI6Cyles)-3):
+        if i % 2 == 0:
+            Cyles.append(PENNI6Cyles[i])
+            AltCyles.append(PENNIAltCyles[i])
+
+    fig, ax = plt.subplots()
+    #ax.set_title('Decoupled Layers Cycle Count (with alt_os_ws)')
+    # set width of bar
+    barWidth = 0.25
+    # Set position of bar on X axis
+    r1 = np.arange(len(Cyles))
+    r2 = [x + barWidth for x in r1]
+    # Make the plot
+    ax.bar(r1, Cyles, width=barWidth, edgecolor='white', label='OS')
+    ax.bar(r2, AltCyles, width=barWidth, edgecolor='white', label='WS')
+    # Add xticks on the middle of the group bars
+    ax.set_xlabel('SKC Layer Index', fontsize='large')
+    plt.xticks([r + barWidth for r in range(len(Cyles))], ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'])
+    ax.set_ylabel('Latency (Cycles)', fontsize='large')
+    # Create legend & Show graphic
+    ax.legend()
+    #ax.grid(True, axis='y')
+    plt.yscale("log")
+    plt.show()
+
+    
 plotCycleUtil()
 plotBW()

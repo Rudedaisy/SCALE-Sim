@@ -114,15 +114,33 @@ def gen_all_traces(
         dram_ifmap_trace_file = "dram_ifmap_read.csv",
         dram_ofmap_trace_file = "dram_ofmap_write.csv",
 
-        DSC=False
+        PENNI=False,    
+        DSC=False,
+        alternateOsWs=False,
+        dynamicShape=False,
+        dy_array_h=32,
+        dy_array_w=32,
+        num_bases=5
     ):
 
     sram_cycles = 0
     util        = 0
 
-    print("Generating traces and bw numbers")
     if DSC:
-        sram_cycles, util, num_IFM_acc_layer, num_filt_acc_layer, num_filt_acc_kr_layer, num_OFM_acc_layer = \
+        if alternateOsWs:
+            data_flow = 'ws'
+            # Kernel reuse limits effective number of systolic array columns
+            array_w = min(int(num_bases), int(array_w))
+        else:
+            array_w = array_h
+            array_h = min(int(num_bases), int(array_h))
+        if dynamicShape:
+            array_h = dy_array_h
+            array_w = dy_array_w
+
+    print("Generating traces and bw numbers")
+    if DSC and not alternateOsWs:
+        sram_cycles, util, num_IFM_acc_layer, num_IFM_acc_fr_layer, num_filt_acc_layer, num_filt_acc_kr_layer, num_OFM_acc_layer = \
             sram_PENNI.sram_traffic(
                 dimension_rows= array_h,
                 dimension_cols= array_w,
@@ -151,7 +169,12 @@ def gen_all_traces(
                 sram_read_trace_file=sram_read_trace_file,
                 sram_write_trace_file=sram_write_trace_file
             )
+        num_IFM_acc_fr_layer = num_IFM_acc_layer
     elif data_flow == 'ws':
+        num_IFM_acc_layer = 0
+        num_filt_acc_layer = 0
+        num_filt_acc_kr_layer = 0
+        num_OFM_acc_layer = 0
         sram_cycles, util = \
             sram_ws.sram_traffic(
                 dimension_rows = array_h,
@@ -163,7 +186,9 @@ def gen_all_traces(
                 strides = strides, num_filt = num_filt,
                 ofmap_base = ofmap_base, filt_base = filt_base, ifmap_base = ifmap_base,
                 sram_read_trace_file = sram_read_trace_file,
-                sram_write_trace_file = sram_write_trace_file
+                sram_write_trace_file = sram_write_trace_file,
+                PENNI=PENNI,
+                DSC=DSC
             )
     elif data_flow == 'is':
         sram_cycles, util = \
@@ -179,6 +204,8 @@ def gen_all_traces(
                 sram_write_trace_file = sram_write_trace_file
             )
 
+    #return "", "", util, sram_cycles, 0, 0, 0, 0, 0 ########## REMOVE
+        
     #print("Generating DRAM traffic")
     dram.dram_trace_read_v2(
         sram_sz=ifmap_sram_size,
@@ -210,7 +237,7 @@ def gen_all_traces(
                                  sram_read_trace_file)
                                  #array_h, array_w)
 
-    return bw_numbers, detailed_log, util, sram_cycles, num_IFM_acc_layer, num_filt_acc_layer, num_filt_acc_kr_layer, num_OFM_acc_layer
+    return bw_numbers, detailed_log, util, sram_cycles, num_IFM_acc_layer, num_IFM_acc_fr_layer, num_filt_acc_layer, num_filt_acc_kr_layer, num_OFM_acc_layer
 
 
 def gen_max_bw_numbers( dram_ifmap_trace_file, dram_filter_trace_file,

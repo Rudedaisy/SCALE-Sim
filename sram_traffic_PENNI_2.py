@@ -40,7 +40,7 @@ def sram_traffic(
 
     cycles = 0
 
-    read_cycles, util, num_IFM_acc, num_filt_acc, num_filt_acc_kr = gen_read_trace(
+    read_cycles, util, num_IFM_acc, num_IFM_acc_fr, num_filt_acc, num_filt_acc_kr = gen_read_trace(
                             cycle = cycles,
                             dim_rows = dimension_rows,
                             dim_cols = dimension_cols,
@@ -71,7 +71,7 @@ def sram_traffic(
 
     cycles = max(read_cycles, write_cycles)
     str_cycles = str(cycles)
-    return str_cycles, util, num_IFM_acc, num_filt_acc, num_filt_acc_kr, num_OFM_acc
+    return str_cycles, util, num_IFM_acc, num_IFM_acc_fr, num_filt_acc, num_filt_acc_kr, num_OFM_acc
 # End of sram_traffic()
 
         
@@ -117,8 +117,9 @@ def gen_read_trace(
     lane_done       = []
     v_fold_barrier  = []
     num_IFM_acc     = 0
+    num_IFM_acc_fr  = 0
     num_filt_acc    = 0
-    num_filt_acc_kr = 0
+    num_filt_acc_kr = filt_h * filt_w * filt_chan * dim_rows # kernel reuse number
 
     # Variables for utilization calculation
     rows_used = 0
@@ -179,7 +180,6 @@ def gen_read_trace(
         filt_read  = ""
         rows_used = 0
         cols_used = 0
-        num_filt_acc_kr += 1
         
         # Generate address for ifmap
         for r in range(dim_rows):
@@ -193,7 +193,7 @@ def gen_read_trace(
                 ifmap_addr = row_base_addr[r] + addr_row_offset + addr_col_offset 
                 ifmap_read += str(int(ifmap_addr)) + ", "
                 rows_used += 1
-                num_IFM_acc += 1
+                num_filt_acc += 1 # switched IFM and filt axes
             else:
                 ifmap_read += ", "
 
@@ -263,7 +263,7 @@ def gen_read_trace(
                 
                 filt_addr = col_base_addr[c] + inc + filt_base 
                 filt_read += str(filt_addr) + ", "
-                num_filt_acc += 1
+                num_IFM_acc += 1 # switched IFM and filter axes
                 cols_used += 1
             else:
                 filt_read += ", "
@@ -311,6 +311,7 @@ def gen_read_trace(
         outfile.write(entry)
 
         this_util = (rows_used * cols_used) / (dim_rows * dim_cols)
+        #print("Utilization is " + str(this_util) + ". Usages (rows/cols) is " + str(rows_used) + "/" + str(cols_used))
         util += this_util
 
         # Update tracking variables
@@ -322,7 +323,9 @@ def gen_read_trace(
 
     util_perc = (util / local_cycle) * 100
 
-    return (local_cycle + cycle), util_perc, num_IFM_acc, num_filt_acc, num_filt_acc_kr
+    #num_IFM_acc_fr = int(num_IFM_acc / filt_h)
+    num_IFM_acc_fr = int(num_IFM_acc * (float(min(filt_h, stride)) / filt_h))
+    return (local_cycle + cycle), util_perc, num_IFM_acc, num_IFM_acc_fr, num_filt_acc, num_filt_acc_kr
 # End of gen_read_trace()
 
 
