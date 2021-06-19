@@ -8,7 +8,7 @@ from absl import app
 FLAGS = flags.FLAGS
 #name of flag | default | explanation
 flags.DEFINE_string("arch_config","./configs/scale.cfg","file where we are getting our architechture from")
-flags.DEFINE_string("network","./topologies/conv_nets/ResNet50_ImageNet_baseline.csv","topology that we are reading")
+flags.DEFINE_string("network","./topologies/conv_nets/MobileNetV2_ImageNet.csv","topology that we are reading")
 #flags.DEFINE_string("network","./topologies/conv_nets/foo.csv","topology that we are reading")
 flags.DEFINE_string("run_name", "", "run_name path override")
 flags.DEFINE_integer("height", None, "Array Height override")
@@ -257,7 +257,7 @@ class scale:
 
 def main(argv):
     # note: dynamicShape params apply to SKC stage only
-    s = scale(save = False, sweep = False, PENNI = False, WAComp = False, alternateOsWs=False, dynamicShape=False)
+    s = scale(save = False, sweep = False, PENNI = True, WAComp = True, alternateOsWs=False, dynamicShape=True)
     s.run_scale()
 
 if __name__ == '__main__':

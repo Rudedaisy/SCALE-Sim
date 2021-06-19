@@ -19,18 +19,18 @@ import numpy as np
 #path = "outputs/ResNet152_CIFAR10_dynamic_os_PENNIv7/"
 #path = "outputs/VGG16_ImageNet_dynamic_os_PENNIv7/"
 #path = "outputs/ResNet50_ImageNet_dynamic_os_PENNIv7/"
-#path = "outputs/MobileNetV2_ImageNet_dynamic_PENNIv7/"
+path = "outputs/MobileNetV2_ImageNet_dynamic_PENNIv7/"
 #path = "outputs/ResNet50_ImageNet_dynamic_os_PENNIv7_experimental/" # experimental
 
 #path = "outputs/ResNet50_ImageNet_dynamic_os_baseline/"
 #path = "outputs/ResNet50_ImageNet_20x20_os_PENNIv7/"
 #path = "outputs/ResNet50_ImageNet_20x20_os_PENNIv7_noCompression/"
-path = "outputs/ResNet50_ImagNet_20x20_os_baseline/"
+#path = "outputs/ResNet50_ImagNet_20x20_os_baseline/"
 
 #path = "outputs/ResNet18_CIFAR10_dynamic_100_os_PENNIv7/"
 #path = "outputs/ResNet18_CIFAR10_80x80_os_PENNIv7/"
 
-modelName = "ResNet50_ImageNet_baseline"
+modelName = "MobileNetV2_ImageNet"
 appendix = ["_cycles.csv", "_avg_bw.csv", "_max_bw.csv"]
 
 ########

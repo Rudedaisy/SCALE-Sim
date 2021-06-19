@@ -18,11 +18,14 @@ from util import latOptimizeShape
 #COEFF_IDX_FILE = "topologies/conv_nets/ResNet18_9430_sparse_weight.h5"
 #COEFF_IDX_FILE = "topologies/conv_nets/VGG16_9342_sparse_weight.h5"
 #COEFF_IDX_FILE = "topologies/conv_nets/MobileNetV2_9335_sparse_weight.h5"
-COEFF_IDX_FILE = "topologies/conv_nets/ResNet50_sparse_weight_7604.h5"
+#COEFF_IDX_FILE = "topologies/conv_nets/ResNet50_sparse_weight_7604.h5"
 #COEFF_IDX_FILE = "topologies/conv_nets/ResNet152_9518_sparse_weight.h5"
 #COEFF_IDX_FILE = "topologies/conv_nets/VGG16_ImageNet_sparse_weight.h5"
 #COEFF_IDX_FILE = "topologies/conv_nets/MobileNetV2_ImageNet_sparse_weight.h5"
 #COEFF_IDX_FILE = "topologies/conv_nets/ResNet50_sparse_weight_7376.h5" # experimental
+
+#COEFF_IDX_FILE = "topologies/conv_nets/MBNETV2_s1.0_46.16_56.36_71.5.h5"
+COEFF_IDX_FILE = "topologies/conv_nets/MBNETV2_s2.0_62.23_75.74_XXX.h5"
 
 def run_net( ifmap_sram_size=1,
              filter_sram_size=1,
